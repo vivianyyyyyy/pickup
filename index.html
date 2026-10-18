@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="手幅取货">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>手幅取货</title>
+<style>
+  :root {
+    --bg: #ffffff; --card: #ffffff; --ink: #1f1a1c; --muted: #8e868a; --line: #efe9ec; --soft: #f6f2f4;
+    --accent: #e8466b; --accent-soft: #fde8ed;
+    --ok: #23966a; --ok-soft: #e2f4ec;
+    --warn: #c06a00; --warn-soft: #fff1d6;
+    --due: #d6336c; --due-soft: #ffe3ec;
+    --shadow: 0 0 0 1px #f0eaed, 0 2px 10px rgba(80,40,60,.06);
+    --round: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.45 var(--round); -webkit-tap-highlight-color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+  button, textarea { font: inherit; color: inherit; }
+
+  /* ---------- 顶部 ---------- */
+  header {
+    position: sticky; top: 0; z-index: 5;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    padding: calc(14px + env(safe-area-inset-top)) 16px 10px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .eyebrow { font-size: 13px; color: var(--muted); }
+  .progress-num { font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin-top: 2px; }
+  .progress-num small { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .bar { height: 6px; border-radius: 3px; background: var(--soft); margin-top: 10px; overflow: hidden; display: flex; }
+  .bar i { display: block; height: 100%; transition: width .3s; }
+  .bar .b-ok { background: var(--ok); }
+  .bar .b-part { background: #f5b335; }
+  .who {
+    display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px;
+    border-radius: 999px; background: var(--card); box-shadow: var(--shadow);
+    font-size: 13px; color: var(--muted);
+  }
+  .who input {
+    width: 56px; border: 0; outline: none; background: var(--soft); color: var(--ink);
+    border-radius: 999px; padding: 4px 10px; font: 600 14px var(--round); text-align: center;
+  }
+  .search { position: relative; margin-top: 14px; }
+  .search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .search input {
+    width: 100%; padding: 14px 14px 14px 44px; font: 17px var(--round);
+    border: 1.5px solid transparent; border-radius: 14px; background: var(--card); color: var(--ink);
+    box-shadow: var(--shadow); outline: none; -webkit-appearance: none;
+  }
+  .search input:focus { border-color: var(--accent); }
+  .seg { display: flex; gap: 4px; margin-top: 12px; padding: 4px; background: var(--soft); border-radius: 12px; }
+  .seg button {
+    flex: 1; padding: 7px 0; border: 0; border-radius: 9px; background: none; cursor: pointer;
+    font-size: 14px; color: var(--muted); white-space: nowrap;
+  }
+  .seg button b { font-weight: 700; margin-left: 2px; }
+  .seg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); font-weight: 600; }
+
+  /* ---------- 订单列表 ---------- */
+  main { padding: 6px 16px 48px; }
+  .order {
+    position: relative; display: block; width: 100%; text-align: left; margin-top: 10px;
+    padding: 14px 14px 14px 18px; border: 0; border-radius: 16px;
+    background: var(--card); box-shadow: var(--shadow); cursor: pointer; overflow: hidden;
+  }
+  .order::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
+  .order.part::before { background: #f5b335; }
+  .order.done::before { background: var(--ok); }
+  .order:active { transform: scale(.99); }
+  .order-head { display: flex; align-items: baseline; gap: 8px; }
+  .oid { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+  .oname { font-size: 15px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { flex: none; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; }
+  .t-none { background: var(--accent-soft); color: var(--accent); }
+  .t-part { background: var(--warn-soft); color: var(--warn); }
+  .t-done { background: var(--ok-soft); color: var(--ok); }
+  .t-due  { background: var(--due); color: #fff; }
+  .lines { margin-top: 4px; font-size: 13px; display: grid; gap: 2px; }
+  .lines .money { color: var(--muted); }
+  .lines .money b { color: var(--ink); font-weight: 700; }
+  .lines .left { color: var(--warn); font-weight: 600; }
+  .lines .nt { color: var(--muted); }
+  .minis { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .mini { position: relative; width: 48px; height: 48px; }
+  .mini .ph { border-radius: 10px; font-size: 10px; }
+  .mini.got .ph { opacity: .3; filter: grayscale(1); }
+  .mini.half .ph { outline: 2px solid #f5b335; outline-offset: 1px; }
+  .mini .n {
+    position: absolute; right: -6px; top: -6px; min-width: 19px; height: 19px; padding: 0 5px;
+    border-radius: 10px; background: var(--ink); color: #fff; border: 2px solid var(--card);
+    font-size: 11px; font-weight: 700; display: grid; place-items: center; line-height: 1;
+  }
+  .mini.got .n { background: var(--ok); }
+  .mini.half .n { background: #e89a00; }
+  .order.done { box-shadow: 0 0 0 1px var(--line); }
+  .order.done .oid, .order.done .oname { opacity: .5; }
+  .empty { text-align: center; color: var(--muted); padding: 56px 0; }
+  .foot { text-align: center; margin-top: 28px; }
+  .link { background: none; border: 0; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- 商品图（无图时显示色块） ---------- */
+  .ph {
+    position: relative; display: grid; place-items: center; width: 100%; height: 100%;
+    overflow: hidden; text-align: center; padding: 6px; line-height: 1.2; font-weight: 700;
+    background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(255,255,255,.22) 10px 20px), var(--c1);
+    color: var(--c2);
+  }
+  .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+  /* ---------- 订单详情 ---------- */
+  .mask {
+    position: fixed; inset: 0; z-index: 10; background: rgba(30,15,20,.38);
+    display: flex; align-items: flex-end; justify-content: center; animation: fade .18s ease-out;
+  }
+  .mask[hidden], .viewer[hidden] { display: none; }
+  .sheet {
+    width: 100%; max-width: 640px; max-height: 94vh; display: flex; flex-direction: column;
+    background: var(--bg); border-radius: 22px 22px 0 0; animation: up .22s ease-out;
+  }
+  .sheet-scroll { overflow-y: auto; padding: 10px 16px 20px; }
+  .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 10px auto 4px; flex: none; }
+  .s-head { display: flex; align-items: flex-start; gap: 12px; }
+  .s-head h2 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  .s-head .sub { color: var(--muted); font-size: 15px; margin-top: 2px; }
+  .x {
+    margin-left: auto; flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0;
+    background: var(--soft); color: var(--muted); font-size: 18px; cursor: pointer;
+  }
+
+  .boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .box { border-radius: 14px; padding: 12px 14px; background: var(--soft); }
+  .box .k { font-size: 12px; color: var(--muted); }
+  .box .v { font-size: 22px; font-weight: 800; margin-top: 2px; }
+  .box .v small { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .box.due { background: var(--due-soft); }
+  .box.due .k, .box.due .v { color: var(--due); }
+  .box.paid .v { color: var(--ok); }
+  .paycard.slim { padding: 12px 14px; }
+  .paycard.slim .pay-status { margin-top: 0; font-size: 16px; }
+  .pay-top .k.need { color: var(--due); font-weight: 700; font-size: 14px; }
+  .who-line { color: var(--muted); }
+  .date { color: var(--ink); font-weight: 600; }
+  .pt { font-weight: 700; }
+  .pt-ok { color: var(--ok); }
+  .pt-due { color: var(--due); }
+  .dup {
+    margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    background: var(--warn-soft); color: var(--warn);
+  }
+  .paycard { margin-top: 14px; border-radius: 16px; padding: 14px; background: var(--soft); }
+  .paycard.unpaid { background: var(--due-soft); }
+  .paycard.ok { background: var(--ok-soft); }
+  .pay-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pay-top .k { font-size: 13px; color: var(--muted); }
+  .paytype { display: flex; padding: 3px; border-radius: 10px; background: rgba(255,255,255,.7); }
+  .paytype button {
+    border: 0; background: none; padding: 6px 10px; border-radius: 8px; font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  .paytype button.on { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: var(--shadow); }
+  .amt { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .amt .krw { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+  .amt .cny { font-size: 20px; font-weight: 700; color: var(--muted); }
+  .paycard.unpaid .amt .krw { color: var(--due); }
+  .paycard.ok .amt .krw { color: var(--ok); }
+  .pay-status { margin-top: 4px; font-size: 14px; font-weight: 600; }
+  .paycard.unpaid .pay-status { color: var(--due); }
+  .paycard.ok .pay-status { color: var(--ok); }
+  .pay-status .link { font-weight: 400; margin-left: 6px; }
+  .prows { margin-top: 10px; border-top: 1px dashed rgba(0,0,0,.12); padding-top: 8px; display: grid; gap: 4px; }
+  .prow { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+  .prow b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .prow.warn, .prow.warn b { color: var(--warn); }
+  .collect { margin-top: 12px; }
+  .due-big { font-size: 15px; font-weight: 700; color: var(--due); }
+  .mgroup { margin-top: 8px; }
+  .mlabel { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .mlabel b { color: var(--ink); font-size: 14px; }
+  .methods { display: flex; gap: 6px; }
+  .methods button {
+    flex: 1; padding: 14px 0; border: 0; border-radius: 10px; background: var(--card); cursor: pointer;
+    font-size: 14px; font-weight: 700; box-shadow: var(--shadow);
+  }
+  .plist { margin-top: 8px; display: grid; gap: 2px; font-size: 13px; color: var(--ok); font-weight: 600; }
+  .plist .link { margin-left: 6px; font-weight: 400; }
+  .pay-status.muted { color: var(--muted); font-weight: 500; }
+  .methods-hint { font-size: 12px; color: var(--due); margin-top: 10px; }
+  .t-paid { background: var(--ok-soft); color: var(--ok); }
+  .boxes.one { grid-template-columns: 1fr; }
+  .paybtn {
+    margin-top: 8px; width: 100%; padding: 8px; border: 0; border-radius: 10px; cursor: pointer;
+    background: var(--due); color: #fff; font-size: 14px; font-weight: 700;
+  }
+  .box.left { background: var(--warn-soft); }
+  .box.left .k, .box.left .v { color: var(--warn); }
+  .box.alldone { background: var(--ok-soft); }
+  .box.alldone .k, .box.alldone .v { color: var(--ok); }
+
+  .alert {
+    margin-top: 10px; padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5;
+    background: var(--warn-soft); color: var(--warn);
+  }
+  .alert b { font-weight: 700; }
+  .alert.note { background: #f3f0ff; color: #5b45c4; }
+  .alert.err { background: var(--due-soft); color: var(--due); }
+  .alert ul { margin: 6px 0 0; padding-left: 18px; }
+  .alert li { margin: 2px 0; }
+  .source { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .source b { color: var(--ink); font-weight: 600; }
+  .btn + .btn { margin-top: 8px; }
+  .btn.ghost { background: var(--soft); color: var(--ink); }
+
+  .s-label { font-size: 13px; color: var(--muted); margin: 18px 2px 8px; display: flex; justify-content: space-between; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .pcard {
+    position: relative; display: flex; flex-direction: column; border: 2px solid transparent; border-radius: 16px;
+    background: var(--card); box-shadow: var(--shadow); text-align: left; cursor: pointer; overflow: hidden;
+    transition: border-color .15s;
+  }
+  .pcard .pimg { aspect-ratio: 1 / 1; }
+  .pcard .ph { font-size: 18px; }
+  .pinfo { display: flex; align-items: baseline; gap: 6px; padding: 10px 12px 0; }
+  .pinfo b { flex: 1; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pinfo .q { font-size: 20px; font-weight: 800; }
+  .spec { padding: 0 12px; font-size: 12px; color: var(--muted); }
+  .price { padding: 2px 12px 0; font-size: 12px; color: var(--muted); }
+  .price b { color: var(--ink); font-weight: 700; }
+  .pstate { padding: 6px 12px 10px; font-size: 13px; color: var(--muted); margin-top: auto; }
+  .pcard.got { border-color: var(--ok); }
+  .pcard.got .ph { filter: grayscale(.6); opacity: .45; }
+  .pcard.got .pstate { color: var(--ok); font-weight: 600; }
+  .pcard.half { border-color: #f5b335; }
+  .pcard.half .pstate { color: var(--warn); font-weight: 600; }
+  .stamp {
+    position: absolute; left: 50%; top: 32%; transform: translate(-50%,-50%) rotate(-8deg);
+    min-width: 76px; height: 76px; padding: 0 10px; border-radius: 38px; background: var(--ok); color: #fff;
+    display: grid; place-items: center; font-size: 15px; font-weight: 800; text-align: center; line-height: 1.15;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); animation: pop .2s ease-out; pointer-events: none;
+  }
+  .stamp.half { background: #f5a300; }
+  .zoom {
+    position: absolute; right: 8px; top: 8px; width: 30px; height: 30px; border-radius: 50%; border: 0;
+    background: rgba(0,0,0,.35); color: #fff; display: grid; place-items: center; cursor: zoom-in;
+  }
+  .stepper {
+    display: flex; align-items: center; margin: 0 10px 10px; border-radius: 10px; background: var(--soft);
+  }
+  .stepper button {
+    width: 40px; height: 36px; border: 0; background: none; font-size: 20px; font-weight: 700; cursor: pointer;
+  }
+  .stepper button:disabled { opacity: .25; cursor: default; }
+  .stepper span { flex: 1; text-align: center; font-size: 13px; color: var(--muted); }
+  .stepper span b { color: var(--ink); font-size: 15px; }
+
+  .memo {
+    width: 100%; min-height: 72px; resize: vertical; padding: 12px; border-radius: 12px;
+    border: 1.5px solid var(--line); background: var(--card); outline: none; font-size: 15px;
+  }
+  .memo:focus { border-color: var(--accent); }
+  .log { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .log li { display: flex; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--line); }
+  .log li:last-child { border-bottom: 0; }
+  .log .t { color: var(--muted); flex: none; width: 92px; }
+  .log .undo { color: var(--due); }
+
+  .s-foot {
+    flex: none; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line); background: var(--bg);
+  }
+  .btn {
+    display: block; width: 100%; padding: 16px; border: 0; border-radius: 14px; cursor: pointer;
+    background: var(--ink); color: #fff; font-size: 17px; font-weight: 700;
+  }
+  .btn.done { background: var(--ok-soft); color: var(--ok); }
+
+  .viewer {
+    position: fixed; inset: 0; z-index: 20; background: rgba(10,6,4,.88);
+    display: grid; place-items: center; padding: 16px; animation: fade .15s;
+  }
+  .viewer .big { width: min(86vw, 440px); aspect-ratio: 1 / 1; border-radius: 20px; overflow: hidden; }
+  .viewer .big .ph { font-size: 28px; }
+  .viewer .full { display: block; max-width: min(92vw, 560px); max-height: 76vh; border-radius: 16px; }
+  .viewer p { color: #fff; text-align: center; font-size: 18px; font-weight: 700; margin: 14px 0 0; }
+  .viewer small { font-size: 14px; font-weight: 500; opacity: .75; }
+
+  .btn.finish { background: var(--ok); }
+  .btn.finish.blocked { background: var(--due); }
+  .nudge-tip { text-align: center; font-size: 14px; font-weight: 700; color: var(--due); margin-bottom: 8px; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  .donelog { color: var(--ok); font-weight: 600; }
+  .sync {
+    display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 10px; padding: 8px 12px;
+    border: 0; border-radius: 10px; background: var(--ok-soft); color: var(--ok);
+    font-size: 13px; font-weight: 600; text-align: left; cursor: pointer;
+  }
+  .sync i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .sync span { flex: 1; }
+  .sync em { flex: none; font-style: normal; font-weight: 500; opacity: .8; }
+  .sync.warn { background: var(--warn-soft); color: var(--warn); }
+  .sync.bad { background: var(--due-soft); color: var(--due); }
+  .alert.offline { background: var(--warn-soft); color: var(--warn); margin-top: 12px; }
+  .dup.clash { background: var(--due-soft); color: var(--due); }
+  .clash-help { margin-top: 8px; font-size: 13px; }
+  .alert .btn { margin-top: 8px; padding: 12px; font-size: 15px; }
+  .voided { color: var(--muted); text-decoration: line-through; }
+  .foot { line-height: 2.2; }
+  .login {
+    position: fixed; inset: 0; z-index: 40; background: var(--bg);
+    display: grid; place-items: center; padding: 24px 16px;
+  }
+  .login[hidden] { display: none; }
+  .login-card { width: 100%; max-width: 360px; text-align: center; }
+  .login-card img { border-radius: 18px; }
+  .login-card h2 { margin: 12px 0 4px; font-size: 24px; }
+  .login-card p { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+  .login-card label { display: block; text-align: left; font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .login-card input {
+    display: block; width: 100%; margin-top: 6px; padding: 14px; font: 600 18px var(--round);
+    border: 1.5px solid var(--line); border-radius: 12px; outline: none; color: var(--ink); background: var(--card);
+  }
+  .login-card input:focus { border-color: var(--accent); }
+  .login-card .btn { margin-top: 20px; }
+  .lerr { min-height: 20px; margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--due); }
+  .warnlink { color: var(--warn); font-weight: 700; }
+  .toast {
+    position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%);
+    z-index: 30; width: min(92vw, 520px); display: flex; align-items: center; gap: 12px;
+    padding: 12px 12px 12px 16px; border-radius: 14px; background: #1f1a1c; color: #fff;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 15px; animation: down .18s ease-out;
+  }
+  .toast[hidden] { display: none; }
+  .toast span { flex: 1; }
+  .toast button {
+    flex: none; border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer;
+    background: #fff; color: #1f1a1c; font-size: 15px; font-weight: 800;
+  }
+  @keyframes down { from { transform: translate(-50%, -20px); opacity: 0; } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes up { from { transform: translateY(40px); opacity: .6; } }
+  @keyframes pop { from { transform: translate(-50%,-50%) rotate(-8deg) scale(.6); opacity: 0; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="eyebrow">取货进度（所有日期）</div>
+        <div class="progress-num" id="prog"></div>
+      </div>
+      <label class="who">核对人<input id="who" maxlength="6" placeholder="A"></label>
+    </div>
+    <div class="bar"><i id="barOk" class="b-ok"></i><i id="barPart" class="b-part"></i></div>
+    <button id="sync" class="sync"></button>
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="收件人 / twitter id / 邮箱" autocomplete="off">
+    </div>
+    <div id="seg" class="seg"></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="source"><span id="source"></span></div>
+  <div id="list"></div>
+  <div class="foot">
+    <span id="demoTools">
+      <button id="mock" class="link"></button><br>
+      <button id="reset" class="link">恢复示例数据</button>
+    </span>
+    <button id="logout" class="link" hidden>退出登录</button>
+  </div>
+</main>
+
+<div id="mask" class="mask" hidden><div id="sheet" class="sheet"></div></div>
+<div id="viewer" class="viewer" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<div id="login" class="login" hidden>
+  <form class="login-card" id="loginForm" autocomplete="off">
+    <img src="icon-192.png" alt="" width="72" height="72">
+    <h2>手幅取货</h2>
+    <p>第一次使用，请输入访问码和你的名字</p>
+    <label>访问码<input id="lcode" inputmode="numeric" required></label>
+    <label>你的名字（记录里会写是谁操作的）<input id="lname" maxlength="6" required></label>
+    <div id="lerr" class="lerr"></div>
+    <button class="btn" type="submit">进入</button>
+  </form>
+</div>
+
+<script>
+// ---------- 商品（之后可以和订单一起从 Excel 导入） ----------
+// img: images 文件夹里的图片；spec: 尺寸/材质，用来区分长得像的款；krw / cny: 韩币 / 人民币单价（来自 ed95_stock.xlsx）
+const DEMO_PRODUCTS = {
+  'Black 手幅':          { img: 'images/black.jpg',                 spec: '60×30 黑色闪粉',    krw: 18000, cny: 105, c1: '#e5e5e5', c2: '#222' },
+  'Cuddle 手幅':         { img: 'images/cuddle.jpg',                spec: '60×30 白色闪粉',    krw: 18000, cny: 105, c1: '#ffd6e0', c2: '#b8264d' },
+  'Sky Blue 手幅':       { img: 'images/skyblue.jpg',               spec: '60×30 白色反光',    krw: 18000, cny: 105, c1: '#cfe9ff', c2: '#1b5f99' },
+  'Dawn 手幅':           { img: 'images/dawn.jpg',                  spec: '60×30 反光',        krw: 18000, cny: 105, c1: '#d3f0f7', c2: '#1b6f87' },
+  'Bubblegum 团扇':      { img: 'images/bubblegum_uchiwa.jpg',      spec: '30×30 大团扇 粉闪', krw: 18000, cny: 105, c1: '#ffd6ec', c2: '#b02a7a' },
+  'mini Bubblegum 团扇': { img: 'images/bubblegum_uchiwa_mini.jpg', spec: '10×10 小团扇 粉闪', krw: 10000, cny: 50, c1: '#ffd6ec', c2: '#b02a7a' },
+  'mini Cuddle 挂件':    { img: 'images/curddle_mini.jpg',          spec: '12×6 手幅挂件',     krw: 10000, cny: 50, c1: '#ffd6e0', c2: '#b8264d' },
+  'Pink 小团扇':         { img: 'images/pink_miniuchiwa.jpg',       spec: '10×10 小团扇',      krw: 10000, cny: 50, c1: '#ffd6e0', c2: '#b8264d' },
+  'Sunshine 小团扇':     { img: 'images/sunshine.jpg',              spec: '10×10 小团扇 反光', krw: 10000, cny: 50, c1: '#ffecb8', c2: '#9a5a00' },
+};
+
+// ---------- 示例订单（和 ed95_stock.xlsx 的「订单」表一样的列，之后会换成 Excel 导入） ----------
+// id: 内部编号（用 Excel 行号，所以同名的人不会被合并）
+// name: 收件人 · twitter · email：三个都能搜
+// pay: '提前转账' 或 '现场付款'（用什么付到现场才知道）；date: 现场日期（只用来显示，所有日期的订单放在一起）
+const DEMO_ORDERS = [
+  { id: 'r2',  name: '小鱼', twitter: '2231',       email: 'xxx1@gmail.com',  pay: '提前转账', date: '10/31', note: '',           items: [['Black 手幅', 1], ['Pink 小团扇', 1]] },
+  { id: 'r3',  name: '阿橘', twitter: '8810',       email: 'xxx1@gmail.com',  pay: '提前转账', date: '11/01', note: '',           items: [['Bubblegum 团扇', 1]] },
+  { id: 'r4',  name: 'momo', twitter: '0042',       email: 'xxx1@gmail.com',  pay: '提前转账', date: '10/30', note: '代取：晴天', items: [['Cuddle 手幅', 1], ['mini Cuddle 挂件', 2], ['Sunshine 小团扇', 1]] },
+  { id: 'r5',  name: '晴天', twitter: '7765',       email: 'xxx1@gmail.com',  pay: '现场付款', date: '11/01', note: '',           items: [['Sky Blue 手幅', 1], ['Dawn 手幅', 1]] },
+  { id: 'r6',  name: 'KK',   twitter: '3390',       email: 'xxx1@gmail.com',  pay: '提前转账', date: '10/31', note: '',           items: [['mini Bubblegum 团扇', 3]] },
+  { id: 'r7',  name: '栗子', twitter: '1208',       email: 'xxx1@gmail.com',  pay: '现场付款', date: '11/01', note: '下午才到',   items: [['Bubblegum 团扇', 1], ['mini Bubblegum 团扇', 1]] },
+  { id: 'r8',  name: '七七', twitter: '6634',       email: 'xxx1@gmail.com',  pay: '提前转账', date: '10/31', note: '',           items: [['Dawn 手幅', 1]] },
+  { id: 'r9',  name: 'Luna', twitter: '9021',       email: 'xxx1@gmail.com',  pay: '现场付款', date: '11/01', note: '',           items: [['Black 手幅', 1], ['Sky Blue 手幅', 1], ['Sunshine 小团扇', 2]] },
+  // 示例：和第一行同名的另一个人，演示同名时让客人自己选
+  { id: 'r10', name: '小鱼', twitter: 'fish_0815',  email: 'fish0815@gmail.com', pay: '现场付款', date: '11/01', note: '',      items: [['Dawn 手幅', 1]] },
+];
+// ---------- 后台 ----------
+// 还没接 Google 表格 / Firebase：先用 MockBackend 模拟后台（存在这台手机里），用来测试断网和补传。
+// 以后换真的后台，只要实现同样的 push / pull 两个方法。
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const MockBackend = {
+  name: '模拟后台（测试用）',
+  key: 'hf_mock_server',
+  offline: (() => { try { return localStorage.getItem('hf_mock_offline') === '1'; } catch (e) { return false; } })(),
+  reset(events) { try { localStorage.setItem(this.key, JSON.stringify({ events })); } catch (e) {} },
+  read() { try { return JSON.parse(localStorage.getItem(this.key)) || { events: [] }; } catch (e) { return { events: [] }; } },
+  check() { if (this.offline || !navigator.onLine) throw new Error('没有网络'); },
+  // 上传记录（重复上传同一条没关系，按编号去重）
+  async push(events) {
+    await sleep(250); this.check();
+    const s = this.read(), have = new Set(s.events.map(e => e.eid));
+    events.forEach(e => { if (!have.has(e.eid)) s.events.push(e); });
+    this.reset(s.events);
+  },
+  // 拉取第 cursor 条以后的新记录
+  async pull(cursor) {
+    await sleep(250); this.check();
+    const s = this.read();
+    return { events: s.events.slice(cursor), cursor: s.events.length };
+  },
+};
+// Google 表格后台：部署 Apps Script（google-apps-script.gs）后得到的「网页应用网址」填在这里。
+// 空着 = 用示例数据和模拟后台。（测试时也可以在网址后面加 ?api=… 临时指定）
+const SHEET_API = new URLSearchParams(location.search).get('api') ||
+  'https://script.google.com/macros/s/AKfycby7ktqc-gsf36vkiJXBQD44ywp94aVLybQ_ZaH5f-of9_qeKMG8YjWPPqAVwGS2280/exec';
+
+const GoogleBackend = {
+  name: 'Google 表格',
+  async call(params, body) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);   // 信号很差时 15 秒没回应就当作没网
+    try {
+      const code = store.get('hf_code', '');
+      const res = body
+        // 用 text/plain 发，Google 的网页应用才不会拦下跨网站请求
+        ? await fetch(SHEET_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                   body: JSON.stringify({ code, ...body }), signal: ctrl.signal })
+        : await fetch(SHEET_API + (SHEET_API.includes('?') ? '&' : '?') + new URLSearchParams({ code, ...params }), { signal: ctrl.signal });
+      const j = await res.json();
+      if (j.error === 'code') throw Object.assign(new Error('访问码不对'), { badCode: true });
+      if (j.error) throw new Error(j.error);
+      return j;
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+  // 上传时顺便带上收件人、动作等文字，表格里看得懂
+  async push(events) { await this.call(null, { events: events.map(e => ({ ...e, view: viewOf(e) })) }); },
+  async pull(cursor) { const j = await this.call({ action: 'pull', cursor }); return { events: j.events, cursor: j.cursor }; },
+};
+const Backend = SHEET_API ? GoogleBackend : MockBackend;
+
+// 一条记录在「取货记录」表里显示成什么
+function viewOf(e) {
+  const o = ORDERS.find(x => x.id === e.oid) || {};
+  const v = { name: o.name || '', twitter: o.twitter || '' };
+  if (e.type === 'pick') Object.assign(v, { action: e.d > 0 ? '取走' : '退回', item: e.n, qty: Math.abs(e.d) });
+  else if (e.type === 'pay') Object.assign(v, { action: '收款', method: e.method, amount: e.cur === 'KRW' ? won(e.amount) : yuan(e.amount) });
+  else if (e.type === 'done') Object.assign(v, { action: '完成交接', qty: e.d });
+  else if (e.type === 'memo') Object.assign(v, { action: '备注', item: e.text });
+  else if (e.type === 'void') {
+    const r = book.events.find(x => x.eid === e.ref), rv = r ? viewOf(r) : {};
+    Object.assign(v, { action: '撤销', item: r ? `撤销「${[rv.action, rv.item, rv.qty && '×' + rv.qty, rv.amount].filter(Boolean).join(' ')}」` : '' });
+  }
+  return v;
+}
+
+// 微信、支付宝收人民币；银行转账、现金收韩币
+const METHODS = [
+  { key: '微信', cur: 'CNY' }, { key: '支付宝', cur: 'CNY' },
+  { key: '银行转账', cur: 'KRW' }, { key: '现金', cur: 'KRW' },
+];
+
+// ---------- 本地存储 ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+// 连了 Google 表格就用表格里的商品和订单（手机里存一份，断网也能用），否则用示例
+const MODE = SHEET_API ? 'sheet:' + SHEET_API : 'demo';
+let sheetCache = SHEET_API ? store.get('hf_sheet_cache', null) : null;
+let PRODUCTS = sheetCache?.products || (SHEET_API ? {} : DEMO_PRODUCTS);
+let ORDERS = sheetCache?.orders || (SHEET_API ? [] : DEMO_ORDERS);
+
+// ---------- 记录本 ----------
+// 每个操作都是一条记录，先存在手机里，有网再上传；所有手机的记录合在一起，算出现在的状态。
+// { eid: 唯一编号, at: 时间, by: 核对人, dev: 设备, oid: 订单, type, ... }
+//   pick: n 商品名, d 件数（正数 = 取走，负数 = 退回）
+//   pay:  method 付款方式, cur 货币, amount 金额, krw / cny 抵了多少货款
+//   done: d 本次交接的件数
+//   memo: text 现场备注（以最新一条为准）
+//   void: ref 撤销哪一条记录
+const DEVICE = store.get('hf_device', null) || (() => {
+  const d = Math.random().toString(36).slice(2, 8);
+  store.set('hf_device', d);
+  return d;
+})();
+
+// 示例：momo 提前转账、只取了一部分；栗子 现场付款、只取了一部分并只付了已取部分
+function demoEvents() {
+  const t = Date.now() - 50 * 60000;
+  const e = (i, by, oid, type, f) => ({ eid: 'demo-' + i, at: t + i, by, dev: 'demo', oid, type, ...f });
+  return [
+    e(1, 'B', 'r4', 'pick', { n: 'Cuddle 手幅', d: 1 }),
+    e(2, 'B', 'r4', 'pick', { n: 'mini Cuddle 挂件', d: 1 }),
+    e(3, 'B', 'r4', 'memo', { text: '挂件现场只剩 1 个，剩下 1 个和团扇周日来拿' }),
+    e(4, 'B', 'r5', 'pay', { method: '微信', cur: 'CNY', amount: 210, krw: 36000, cny: 210 }),
+    e(5, 'A', 'r7', 'pick', { n: 'Bubblegum 团扇', d: 1 }),
+    e(6, 'A', 'r7', 'pay', { method: '微信', cur: 'CNY', amount: 105, krw: 18000, cny: 105 }),
+    e(7, 'A', 'r7', 'memo', { text: '小团扇明天来拿' }),
+  ];
+}
+// book.events: 这台手机知道的所有记录（自己的 + 从后台拉下来的）
+// book.sent:   已经上传到后台的记录编号；book.cursor: 后台记录拉到了第几条
+const newBook = events => ({ events, sent: Object.fromEntries(events.map(e => [e.eid, true])), cursor: 0 });
+let book = store.get('hf_book_v1', null);
+if (!book || store.get('hf_mode', '') !== MODE) {   // 第一次用，或者换了数据来源：从头开始
+  book = SHEET_API ? newBook([]) : newBook(demoEvents());
+  if (!SHEET_API) MockBackend.reset(book.events);
+  store.set('hf_mode', MODE);
+}
+const saveBook = () => store.set('hf_book_v1', book);
+
+// 由记录算出当前状态
+// data.picks:    { 订单: { 商品名: 已取件数 } }（按订单数量截断）
+// data.raw:      { 订单: { 商品名: 记录加起来的件数 } }（可能超过订单数量 = 可能重复发了）
+// data.payments: { 订单: [{ eid, method, cur, amount, krw, cny, at, by }] }
+// data.logs:     { 订单: [显示用的记录] }；data.memos: { 订单: 现场备注 }
+let data;
+function rebuild() {
+  const voids = book.events.filter(e => e.type === 'void');
+  const voidIds = new Set(voids.map(e => e.eid));
+  const undoneVoids = new Set(voids.filter(e => voidIds.has(e.ref)).map(e => e.ref));   // 撤销又被撤销 = 恢复
+  const dead = new Set(voids.filter(e => !undoneVoids.has(e.eid) && !voidIds.has(e.ref)).map(e => e.ref));
+  const qty = {};
+  ORDERS.forEach(o => { qty[o.id] = Object.fromEntries(o.items); });
+
+  data = { picks: {}, raw: {}, payments: {}, logs: {}, memos: {} };
+  const evs = book.events.filter(e => e.type !== 'void').sort((a, b) => a.at - b.at || (a.eid < b.eid ? -1 : 1));
+  for (const e of evs) {
+    const gone = dead.has(e.eid), log = (data.logs[e.oid] ||= []);
+    const base = { at: e.at, by: e.by, voided: gone };
+    if (e.type === 'pick') {
+      if (!gone) (data.raw[e.oid] ||= {})[e.n] = (data.raw[e.oid]?.[e.n] || 0) + e.d;
+      log.push({ ...base, n: e.n, d: e.d });
+    } else if (e.type === 'pay') {
+      if (!gone) (data.payments[e.oid] ||= []).push({ eid: e.eid, method: e.method, cur: e.cur, amount: e.amount, krw: e.krw, cny: e.cny, at: e.at, by: e.by });
+      log.push({ ...base, paid: e.method, cur: e.cur, amount: e.amount });
+    } else if (e.type === 'done') {
+      if (!gone) log.push({ ...base, done: e.d });
+    } else if (e.type === 'memo') {
+      if (!gone) { if (e.text) data.memos[e.oid] = e.text; else delete data.memos[e.oid]; }
+    }
+  }
+  for (const oid in data.raw) {
+    data.picks[oid] = {};
+    for (const n in data.raw[oid]) data.picks[oid][n] = Math.max(0, Math.min(qty[oid]?.[n] ?? Infinity, data.raw[oid][n]));
+  }
+}
+
+// 写一条新记录（在 act 里写的会被记下来，方便撤销）
+let recording = null;
+const whoAmI = () => $('#who').value.trim() || '?';
+function emit(oid, type, fields) {
+  const e = { eid: `${DEVICE}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+              at: Date.now(), by: whoAmI(), dev: DEVICE, oid, type, ...fields };
+  book.events.push(e);
+  if (recording) recording.push(e.eid);
+  return e;
+}
+// 存好、重算、通知同步
+function commit() { saveBook(); rebuild(); sync.kick(); }
+
+let filter = 'all';
+let openId = null;
+
+// ---------- 同步 ----------
+// 有改动马上试着上传；另外每 10 秒、网络恢复时各同步一次。失败了记录还在手机里，下次再传。
+const sync = {
+  busy: false,
+  lastOk: store.get('hf_last_sync', 0),
+  offlineSince: null,
+  pending() { return book.events.filter(e => !book.sent[e.eid]).length; },
+  kick() { clearTimeout(this.timer); this.timer = setTimeout(() => this.run(), 200); renderSync(); },
+  async run() {
+    if (SHEET_API && !store.get('hf_code', '')) return;   // 还没登录
+    if (this.busy) { this.again = true; return; }   // 正在同步：结束后马上再跑一次
+    this.busy = true; this.again = false; renderSync();
+    try {
+      const out = book.events.filter(e => !book.sent[e.eid]);
+      if (out.length) {
+        await Backend.push(out);
+        out.forEach(e => { book.sent[e.eid] = true; });
+        saveBook();
+      }
+      const res = await Backend.pull(book.cursor || 0);
+      const have = new Set(book.events.map(e => e.eid));
+      let added = 0;
+      res.events.forEach(e => {
+        book.sent[e.eid] = true;
+        if (!have.has(e.eid)) { book.events.push(e); added++; }
+      });
+      // 「取货记录」被清空了 = 新的一场：手机里已经上传过的旧记录也清掉（还没上传的保留）
+      if (res.cursor === 0 && book.events.some(e => book.sent[e.eid])) {
+        book.events = book.events.filter(e => !book.sent[e.eid]);
+        book.sent = {}; book.cursor = 0; added = 1;
+      }
+      // 后台的记录比上次少了（有人删了「取货记录」的行）：从头再拉一遍，按编号去重
+      else if (res.cursor < (book.cursor || 0)) { book.cursor = 0; this.again = true; }
+      else book.cursor = res.cursor;
+      saveBook();
+      this.lastOk = Date.now(); store.set('hf_last_sync', this.lastOk);
+      this.offlineSince = null;
+      if (added) { rebuild(); refreshViews(); }
+      if (SHEET_API && Date.now() - lastLoad > 60000) loadSheet();   // 每分钟看一次订单有没有改
+    } catch (err) {
+      if (err.badCode) showLogin('访问码已经改了，请输入新的访问码');
+      else this.offlineSince ||= Date.now();
+    }
+    this.busy = false; renderSync();
+    if (this.again && !this.offlineSince) this.run();
+  },
+};
+// 别人的操作同步过来后刷新画面（正在写备注时先不刷新，免得打断输入）
+function refreshViews() {
+  renderList();
+  if (openId && document.activeElement?.id !== 'memo') renderSheet();
+}
+const ago = t => {
+  const m = Math.floor((Date.now() - t) / 60000);
+  return m < 1 ? '刚刚' : m < 60 ? `${m} 分钟前` : time(t);
+};
+let offlineReady = false;   // 页面已经存进手机，断网也能打开
+function renderSync() {
+  const n = sync.pending(), off = sync.offlineSince;
+  const long = off && Date.now() - off > 5 * 60000;
+  let cls, text;
+  if (off) {
+    cls = long ? 'bad' : 'warn';
+    text = long ? `离线 ${Math.floor((Date.now() - off) / 60000)} 分钟 · 看不到同伴的最新操作` : '没有网络';
+    text += n ? ` · ${n} 条记录存在手机上，有网自动上传` : ' · 记录会先存在手机上';
+  } else if (sync.busy && n) {
+    cls = 'warn'; text = `正在上传 ${n} 条记录…`;
+  } else if (n) {
+    cls = 'warn'; text = `${n} 条记录待上传`;
+  } else {
+    cls = 'ok'; text = `已同步 · ${sync.lastOk ? ago(sync.lastOk) : '还没同步过'}`;
+  }
+  $('#sync').className = 'sync ' + cls;
+  $('#sync').innerHTML = `<i></i><span>${esc(text)}</span>${offlineReady ? '<em>✓ 可离线打开</em>' : ''}`;
+}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const time = t => new Date(t).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+const norm = s => String(s ?? '').toLowerCase().replace(/\s+/g, '');
+const yuan = n => '¥' + n.toLocaleString('zh-CN');
+const won = n => '₩' + n.toLocaleString('ko-KR');
+const payType = o => o.pay === '现场付款' ? '现场付款' : '提前转账';
+
+const taken = (o, n) => data.picks[o.id]?.[n] || 0;
+// 按件数算一组商品的韩币/人民币金额
+function pair(o, count) {
+  return o.items.reduce((a, [n, c]) => {
+    const k = count(n, c);
+    return { krw: a.krw + k * (PRODUCTS[n]?.krw || 0), cny: a.cny + k * (PRODUCTS[n]?.cny || 0) };
+  }, { krw: 0, cny: 0 });
+}
+function sum(o) {
+  let qty = 0, got = 0;
+  o.items.forEach(([n, c]) => { qty += c; got += Math.min(taken(o, n), c); });
+  const T = pair(o, (n, c) => c);                          // 订单总额
+  const G = pair(o, (n, c) => Math.min(taken(o, n), c));   // 已取商品的金额
+  const type = payType(o);
+  const pays = type === '现场付款' ? (data.payments?.[o.id] || []) : [];
+  const P = pays.reduce((a, p) => ({ krw: a.krw + p.krw, cny: a.cny + p.cny }), { krw: 0, cny: 0 });  // 已收
+  const due = type === '现场付款'                              // 本次应收 = 已取 − 已收
+    ? { krw: Math.max(0, G.krw - P.krw), cny: Math.max(0, G.cny - P.cny) } : { krw: 0, cny: 0 };
+  return {
+    qty, got, left: qty - got, krw: T.krw, cny: T.cny, T, G, P, due, type, pays,
+    rest: { krw: T.krw - G.krw, cny: T.cny - G.cny },       // 未取部分的金额
+    unpaid: due.krw > 0,
+    paidAll: type === '提前转账' || P.krw >= T.krw,
+  };
+}
+function status(o) {
+  const s = sum(o);
+  return s.got === 0 ? 'none' : s.left === 0 ? 'done' : 'part';
+}
+const leftItems = o => o.items.map(([n, c]) => [n, c - taken(o, n)]).filter(([, k]) => k > 0);
+const LABEL = { none: '待取', part: '取了一部分', done: '已取完' };
+
+// 多台手机断网时各自操作，合起来后可能重复发货 / 重复收款
+function conflicts(o) {
+  const out = [];
+  o.items.forEach(([n, c]) => {
+    const r = data.raw[o.id]?.[n] || 0;
+    if (r > c) out.push({ kind: 'pick', n, c, r, text: `「${n}」记录取走了 ${r} 件，订单只有 ${c} 件` });
+  });
+  if (payType(o) === '现场付款') {
+    const m = sum(o);
+    if (m.P.krw > m.T.krw) out.push({ kind: 'pay', text: `收款记录比订单金额多了 ${both({ krw: m.P.krw - m.T.krw, cny: m.P.cny - m.T.cny })}` });
+  }
+  return out;
+}
+
+// ---------- 列表 ----------
+function renderList() {
+  const st = ORDERS.map(status);
+  const done = st.filter(s => s === 'done').length, part = st.filter(s => s === 'part').length;
+  $('#prog').innerHTML = `${done}<small> / ${ORDERS.length} 单已取完${part ? ` · ${part} 单取了一部分` : ''}</small>`;
+  $('#barOk').style.width = done / (ORDERS.length || 1) * 100 + '%';
+  $('#barPart').style.width = part / (ORDERS.length || 1) * 100 + '%';
+
+  const q = norm($('#q').value);
+  const hit = ORDERS.filter(o => !q || [o.name, o.twitter, o.email].some(v => norm(v).includes(q)));
+  const count = { all: hit.length, none: 0, part: 0, done: 0 };
+  hit.forEach(o => count[status(o)]++);
+
+  $('#seg').innerHTML = [['all', '全部'], ['none', '待取'], ['part', '一部分'], ['done', '已取完']]
+    .map(([k, t]) => `<button class="${filter === k ? 'on' : ''}" data-f="${k}">${t}<b>${count[k]}</b></button>`).join('');
+
+  const shown = hit.filter(o => filter === 'all' || status(o) === filter);
+  const clash = ORDERS.filter(o => conflicts(o).length).length;
+  // 同名提醒：搜索结果里有重名的人，提示核对 twitter / 邮箱
+  const names = {};
+  shown.forEach(o => { names[norm(o.name)] = (names[norm(o.name)] || 0) + 1; });
+  const dup = q && Object.values(names).some(n => n > 1);
+  $('#list').innerHTML = (clash ? `<div class="dup clash">⚠ 有 ${clash} 单可能重复发货或重复收款（断网时多台手机同时操作），点开标红的订单核实</div>` : '') +
+  (dup ? `<div class="dup">有同名的人，请让客人确认 twitter id 或邮箱，再点开对应的那一位</div>` : '') +
+  (shown.length ? shown.map(o => {
+    const s = status(o), m = sum(o), memo = data.memos[o.id];
+    const left = leftItems(o);
+    return `<button class="order ${s}" data-id="${esc(o.id)}">
+      <div class="order-head">
+        <span class="oid">${esc(o.name)}</span>
+        <span class="oname">${o.twitter ? '@' + esc(o.twitter) : ''}</span>
+        ${conflicts(o).length ? '<span class="tag t-due">⚠ 可能重复</span>' : ''}
+        <span class="tag t-${s}">${LABEL[s]}</span>
+      </div>
+      <div class="lines">
+        <span class="who-line">${esc(o.email)}${o.date ? ` · <span class="date">现场 ${esc(o.date)}</span>` : ''}</span>
+        <span class="money">共 ${m.qty} 件 · ${payTag(m)}</span>
+        ${s === 'part' ? `<span class="left">还差 ${m.left} 件：${left.map(([n, k]) => `${esc(n)} ×${k}`).join('、')}</span>` : ''}
+        ${o.note ? `<span class="nt">⚑ ${esc(o.note)}</span>` : ''}
+        ${memo ? `<span class="nt">✎ ${esc(memo)}</span>` : ''}
+      </div>
+      <div class="minis">${o.items.map(([n, c]) => {
+        const k = taken(o, n), cls = k >= c ? 'got' : k > 0 ? 'half' : '';
+        return `<span class="mini ${cls}">${ph(n)}<span class="n">${k >= c ? '✓' : k > 0 ? `${k}/${c}` : c}</span></span>`;
+      }).join('')}</div>
+    </button>`;
+  }).join('') : `<div class="empty">${ORDERS.length ? '没有找到匹配的订单' : '还没有订单数据，联网后会自动从 Google 表格读取'}</div>`);
+}
+
+function ph(name) {
+  const p = PRODUCTS[name] || { c1: '#e9e4de', c2: '#6d645d' };
+  return `<span class="ph" style="--c1:${p.c1};--c2:${p.c2}">${esc(name)}${
+    p.img ? `<img src="${esc(p.img)}" alt="${esc(name)}" loading="lazy" onerror="this.remove()">` : ''}</span>`;
+}
+
+const both = x => `${won(x.krw)} / ${yuan(x.cny)}`;
+// 付款标记：提前转账只标"已转账"；现场付款才显示金额
+function payTag(m) {
+  if (m.type === '提前转账') return `<span class="pt pt-ok">✓ 已提前转账</span>`;
+  if (m.paidAll) return `<span class="pt pt-ok">✓ 现场已付清</span>`;
+  if (m.unpaid) return `<span class="pt pt-due">现场付款 · 待收 ${both(m.due)}</span>`;
+  return `<span class="pt pt-due">现场付款 ${both({ krw: m.krw - m.P.krw, cny: m.cny - m.P.cny })}</span>`;
+}
+
+// ---------- 付款框 ----------
+let payAllFor = null;   // 客人想一次付清全部（包括还没取的）时，记下订单号
+const toCollect = (o, m) => payAllFor === o.id ? { krw: m.T.krw - m.P.krw, cny: m.T.cny - m.P.cny } : m.due;
+
+function payCard(o, m) {
+  const row = (k, v, cls = '') => `<div class="prow ${cls}"><span>${k}</span><b>${v}</b></div>`;
+  if (m.type === '提前转账') {
+    return `<div class="paycard ok slim"><div class="pay-status">✓ 已提前转账，不用收钱</div></div>`;
+  }
+  const top = `<div class="pay-top"><span class="k need">需要现场付款</span></div>
+    <div class="amt"><span class="krw">${won(m.krw)}</span><span class="cny">${yuan(m.cny)}</span></div>`;
+
+  const c = toCollect(o, m);
+  let body, cls;
+  if (c.krw > 0) {
+    cls = 'unpaid';
+    const btn = i => `<button data-mi="${i}">${METHODS[i].key}</button>`;
+    body = `<div class="collect">
+      <div class="due-big">${payAllFor === o.id ? '一次付清全部' : `本次应收（已取的 ${m.got} 件）`} · 客人用什么付就点哪个</div>
+      <div class="mgroup"><div class="mlabel">收人民币 <b>${yuan(c.cny)}</b></div><div class="methods">${btn(0)}${btn(1)}</div></div>
+      <div class="mgroup"><div class="mlabel">收韩币 <b>${won(c.krw)}</b></div><div class="methods">${btn(2)}${btn(3)}</div></div>
+      ${payAllFor === o.id ? `<button class="link" id="payonly" style="margin-top:8px">改回只收已取部分</button>` : ''}
+    </div>`;
+  } else if (m.paidAll) {
+    cls = 'ok'; body = `<div class="pay-status">✓ 全部付清</div>`;
+  } else if (m.got === 0) {
+    cls = ''; body = `<div class="pay-status muted">先勾选这次要取的商品，这里会算出应收金额</div>
+      <button class="link" id="payall">客人想一次付清全部</button>`;
+  } else {
+    cls = 'ok'; body = `<div class="pay-status">✓ 已取的部分已付清</div>`;
+  }
+
+  return `<div class="paycard ${cls}">${top}
+    <div class="prows">
+      ${row(`已取 ${m.got} / ${m.qty} 件`, both(m.G))}
+      ${m.pays.length ? row('已收', both(m.P)) : ''}
+      ${m.left ? row(`未取 ${m.left} 件`, `${both(m.rest)} · ${m.paidAll ? '已付' : '下次取货时付'}`, m.paidAll ? 'warn' : '') : ''}
+    </div>
+    ${m.pays.length ? `<div class="plist">${m.pays.map((p, i) => `<div>✓ ${esc(p.method)} ${p.cur === 'KRW' ? won(p.amount) : yuan(p.amount)} · ${esc(p.by)} ${time(p.at)}${
+      i === m.pays.length - 1 ? `<button class="link" id="unpay">撤销</button>` : ''}</div>`).join('')}</div>` : ''}
+    ${body}
+  </div>`;
+}
+
+// ---------- 完成确认 ----------
+// 打开订单时记下当时的状态；这次有改动（取货 / 收款），就必须点「已经取完」才能关闭
+let session = null, nudge = false;
+const payIds = id => (data.payments[id] || []).map(p => p.eid).join(',');
+function changes(o) {
+  const before = session.picks, now = data.picks[o.id] || {};
+  const d = o.items.reduce((a, [n]) => a + (now[n] || 0) - (before[n] || 0), 0);
+  const paid = payIds(o.id) !== session.pays;
+  const same = o.items.every(([n]) => (now[n] || 0) === (before[n] || 0));
+  return { d, paid, changed: !same || paid };
+}
+function footer(o, m) {
+  const ch = changes(o);
+  if (!ch.changed) {
+    return m.left
+      ? `<button class="btn" id="all">${m.got ? `剩下的 ${m.left} 件全部交给客人` : `全部交给客人（${m.qty} 件）`}</button>`
+      : `<button class="btn ghost" id="close2">关闭</button>`;
+  }
+  const c = m.unpaid ? both(m.due) : '';
+  return `
+    ${nudge ? `<div class="nudge-tip">${m.unpaid ? '还没收钱，收完才能完成' : '这次有改动，请点「已经取完」确认后再关闭'}</div>` : ''}
+    ${m.left ? `<button class="btn ghost" id="all">剩下的 ${m.left} 件也交给客人</button>` : ''}
+    ${m.unpaid
+      ? `<button class="btn finish blocked ${nudge ? 'shake' : ''}" id="finish">还没收钱 ${c}</button>`
+      : `<button class="btn finish ${nudge ? 'shake' : ''}" id="finish">✓ 已经取完（本次${ch.d >= 0 ? '取走' : '退回'} ${Math.abs(ch.d)} 件）</button>`}`;
+}
+function tryClose() {
+  const o = ORDERS.find(x => x.id === openId);
+  if (o && changes(o).changed) { nudge = true; renderSheet(); return; }
+  closeOrder();
+}
+function finish(o) {
+  const m = sum(o), ch = changes(o);
+  if (m.unpaid) {
+    nudge = true; renderSheet();
+    $('.paycard')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  emit(o.id, 'done', { d: ch.d });
+  commit();
+  closeOrder();
+  showToast(`${o.name}：已完成，本次${ch.d >= 0 ? '取走' : '退回'} ${Math.abs(ch.d)} 件${m.left ? `，还差 ${m.left} 件` : ''}`);
+}
+
+// ---------- 订单详情 ----------
+function renderSheet() {
+  const o = ORDERS.find(x => x.id === openId);
+  if (!o) return;
+  const m = sum(o), s = status(o), left = leftItems(o);
+  const logs = (data.logs[o.id] || []).slice().reverse();
+  const keepScroll = $('.sheet-scroll')?.scrollTop || 0;
+
+  $('#sheet').innerHTML = `
+    <div class="grab"></div>
+    <div class="sheet-scroll">
+      <div class="s-head">
+        <div>
+          <h2>${esc(o.name)}</h2>
+          <div class="sub">${o.twitter ? '@' + esc(o.twitter) + ' · ' : ''}${esc(o.email)}</div>
+          ${o.date ? `<div class="sub">现场日期 ${esc(o.date)}</div>` : ''}
+        </div>
+        <button class="x" id="close" aria-label="关闭">✕</button>
+      </div>
+
+      ${sync.offlineSince ? `<div class="alert offline">没有网络 · 数据更新于 ${sync.lastOk ? ago(sync.lastOk) : '很久以前'}，同伴刚做的操作可能还没显示</div>` : ''}
+      ${conflicts(o).length ? `<div class="alert err"><b>⚠ 可能重复：</b><ul>${conflicts(o).map(c => `<li>${esc(c.text)}</li>`).join('')}</ul>
+        <div class="clash-help">请看下面的取货记录，确认是谁、几点操作的。核实后：</div>
+        ${conflicts(o).some(c => c.kind === 'pick') ? '<button class="btn ghost" id="fixpick">只发了订单数量，按订单数量修正</button>' : ''}
+        ${conflicts(o).some(c => c.kind === 'pay') ? '<div class="clash-help">多收的钱：退给客人后，在付款记录里点「撤销」删掉多的那一笔</div>' : ''}
+      </div>` : ''}
+
+      ${payCard(o, m)}
+
+      <div class="boxes one" style="margin-top:10px">
+        ${s === 'done'
+          ? `<div class="box alldone"><div class="k">取货情况</div><div class="v">已取完</div><div class="k">共 ${m.qty} 件</div></div>`
+          : s === 'part'
+          ? `<div class="box left"><div class="k">取货情况</div><div class="v">还差 ${m.left} 件</div><div class="k">已取 ${m.got} / ${m.qty} 件</div></div>`
+          : `<div class="box"><div class="k">取货情况</div><div class="v">${m.qty} 件<small> 未取</small></div><div class="k">&nbsp;</div></div>`}
+      </div>
+
+      ${s === 'part' ? `<div class="alert"><b>还没取：</b>${left.map(([n, k]) => `${esc(n)} ×${k}`).join('、')}</div>` : ''}
+      ${o.note ? `<div class="alert note"><b>订单备注：</b>${esc(o.note)}</div>` : ''}
+
+      <div class="s-label"><span>要拿的东西 · 共 ${m.qty} 件</span><span>点卡片 = 取走 / 改回未取</span></div>
+      <div class="grid">
+        ${o.items.map(([n, c], i) => {
+          const k = taken(o, n), p = PRODUCTS[n] || {};
+          const cls = k >= c ? 'got' : k > 0 ? 'half' : '';
+          const last = (data.logs[o.id] || []).filter(l => l.n === n && l.d > 0 && !l.voided).pop();
+          return `<div class="pcard ${cls}" data-i="${i}" role="button" tabindex="0">
+            <div class="pimg">${ph(n)}</div>
+            ${k >= c ? `<span class="stamp">已取</span>` : k > 0 ? `<span class="stamp half">取了<br>${k}/${c}</span>` : ''}
+            <button class="zoom" data-zoom="${esc(n)}" aria-label="放大">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            </button>
+            <div class="pinfo"><b>${esc(n)}</b><span class="q">×${c}</span></div>
+            ${p.spec ? `<div class="spec">${esc(p.spec)}</div>` : ''}
+            ${p.krw ? `<div class="price">${won(p.krw)} / ${yuan(p.cny)}${c > 1 ? ` × ${c} = <b>${won(p.krw * c)} / ${yuan(p.cny * c)}</b>` : ''}</div>` : ''}
+            <div class="pstate">${k >= c ? `✓ 已取完${last ? ` · ${esc(last.by)} ${time(last.at)}` : ''}`
+              : k > 0 ? `已取 ${k} 件，还差 ${c - k} 件` : '未取'}</div>
+            ${c > 1 ? `<div class="stepper">
+              <button data-step="-1" ${k <= 0 ? 'disabled' : ''} aria-label="少取一件">−</button>
+              <span>已取 <b>${k}</b> / ${c}</span>
+              <button data-step="1" ${k >= c ? 'disabled' : ''} aria-label="多取一件">+</button>
+            </div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="s-label"><span>现场备注</span><span>自动保存</span></div>
+      <textarea class="memo" id="memo" placeholder="比如：剩下的周日来拿 / 已收补款 / 换成了 B 款">${esc(data.memos[o.id] || '')}</textarea>
+
+      ${logs.length ? `
+        <div class="s-label"><span>取货记录</span></div>
+        <ul class="log">${logs.map(l => `<li>
+          <span class="t">${time(l.at)} · ${esc(l.by)}</span>
+          ${l.done !== undefined ? `<span class="donelog">✓ 完成交接（本次${l.done >= 0 ? '取走' : '退回'} ${Math.abs(l.done)} 件）</span>`
+            : l.paid ? `<span class="${l.voided ? 'voided' : ''}">收到 ${l.cur === 'KRW' ? won(l.amount) : yuan(l.amount)}（${esc(l.paid)}）${l.voided ? '（已撤销）' : ''}</span>`
+            : `<span class="${l.voided ? 'voided' : l.d < 0 ? 'undo' : ''}">${l.d > 0 ? '取走' : '退回'} ${esc(l.n)} ×${Math.abs(l.d)}${l.voided ? '（已撤销）' : ''}</span>`}
+        </li>`).join('')}</ul>` : ''}
+    </div>
+    <div class="s-foot">${footer(o, m)}</div>`;
+  $('.sheet-scroll').scrollTop = keepScroll;
+}
+
+function setTaken(o, n, k) {
+  const c = o.items.find(([x]) => x === n)[1];
+  k = Math.max(0, Math.min(c, k));
+  const d = k - taken(o, n);
+  if (d) emit(o.id, 'pick', { n, d });
+}
+
+// ---------- 撤销 ----------
+// 撤销 = 追加一条"撤销"记录（不删原记录），断网时撤销也能正确同步
+let undoIds = null, toastTimer = null;
+function act(msg, fn) {
+  recording = [];
+  fn();
+  const ids = recording;
+  recording = null;
+  commit();
+  if (ids.length) showToast(msg, ids);
+}
+function showToast(msg, ids = null) {
+  undoIds = ids;
+  $('#toast').innerHTML = `<span>${esc(msg)}</span>${ids ? '<button id="undo">撤销</button>' : ''}`;
+  $('#toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('#toast').hidden = true; undoIds = null; }, ids ? 6000 : 3000);
+}
+$('#toast').addEventListener('click', e => {
+  if (!e.target.closest('#undo') || !undoIds) return;
+  undoIds.slice().reverse().forEach(ref => {
+    const r = book.events.find(x => x.eid === ref);
+    if (r) emit(r.oid, 'void', { ref });
+  });
+  undoIds = null;
+  commit();
+  $('#toast').hidden = true;
+  if (openId) renderSheet(); else renderList();
+});
+
+function openOrder(id) {
+  openId = id; payAllFor = null; nudge = false;
+  session = { picks: JSON.parse(JSON.stringify(data.picks[id] || {})), pays: payIds(id) };
+  renderSheet(); $('#mask').hidden = false;
+}
+function closeOrder() { $('#toast').hidden = true; undoIds = null; openId = null; $('#mask').hidden = true; renderList(); }
+
+// ---------- 读 Google 表格 ----------
+// 「商品」表：商品名 / 规格 / 韩币 / 人民币 / 图片；「订单」表：收件人 / twitter / email / 付款方式 / 现场日期 / 商品列… / 备注
+const PALETTE = [['#ffd6e0', '#b8264d'], ['#ddd5ff', '#5634c4'], ['#cfe9ff', '#1b5f99'], ['#ffe8b8', '#9a5a00'], ['#d3f0f7', '#1b6f87'], ['#e5e5e5', '#222']];
+const ORDER_COLS = {   // 按表头文字认列，顺序可以随便换
+  name: /receiver|수령인|收件人|姓名|名字|昵称/i,
+  twitter: /twitter|推特|트위터/i,
+  email: /e-?mail|gmail|邮箱|이메일/i,
+  pay: /付款|결제|payment/i,
+  date: /日期|날짜|date/i,
+  note: /备注|메모|note|memo/i,
+};
+const IGNORE_COL = /合计|total|序号|编号|预览|库存/i;
+const cell = v => String(v ?? '').trim();
+
+// pr / or：「商品」「订单」两张表的内容（二维数组，第一行是表头）
+function parseRows(pr, or) {
+  const errors = [], warns = [];
+  if (!pr.length) errors.push('找不到「商品」表，或者表是空的');
+  if (!or.length) errors.push('找不到「订单」表，或者表是空的');
+  if (errors.length) return { errors, warns };
+
+  // 商品
+  const ph = (pr[0] || []).map(cell);
+  const col = re => ph.findIndex(h => re.test(h));
+  const iName = col(/商品名|^商品$|^name$/i), iSpec = col(/规格|spec/i), iKrw = col(/韩币|krw|원/i),
+        iCny = col(/人民币|cny|rmb/i), iImg = col(/^(图片|image|img)$/i);
+  if (iName < 0) errors.push('「商品」表找不到「商品名」列');
+  if (iKrw < 0 || iCny < 0) errors.push('「商品」表找不到「韩币」或「人民币」列');
+  if (errors.length) return { errors, warns };
+  const products = {};
+  pr.slice(1).forEach(r => {
+    const n = cell(r[iName]); if (!n) return;
+    if (products[n]) return warns.push(`商品「${n}」写了两次，只用第一行`);
+    const krw = Number(r[iKrw]) || 0, cny = Number(r[iCny]) || 0;
+    if (!krw || !cny) warns.push(`商品「${n}」的价格没填全`);
+    const [c1, c2] = PALETTE[Object.keys(products).length % PALETTE.length];
+    const img = iImg >= 0 ? cell(r[iImg]) : '';
+    products[n] = { img: !img ? '' : /^https?:/.test(img) ? img : 'images/' + img, spec: iSpec >= 0 ? cell(r[iSpec]) : '', krw, cny, c1, c2 };
+  });
+  if (!Object.keys(products).length) errors.push('「商品」表里没有商品');
+
+  // 订单
+  const oh = (or[0] || []).map(cell);
+  const map = {}, prodCols = [], unknown = [];
+  oh.forEach((h, i) => {
+    if (!h) return;
+    if (products[h]) return prodCols.push([i, h]);
+    const k = Object.keys(ORDER_COLS).find(k => map[k] === undefined && ORDER_COLS[k].test(h));
+    if (k) map[k] = i;
+    else if (!IGNORE_COL.test(h)) unknown.push(h.replace(/\s+/g, ' '));
+  });
+  if ([map.name, map.twitter, map.email].every(x => x === undefined)) errors.push('「订单」表找不到收件人 / twitter / email 列');
+  if (!prodCols.length) errors.push('「订单」表里没有和「商品」表同名的商品列');
+  if (errors.length) return { errors, warns };
+  if (unknown.length) warns.push(`这些列没有认出来，已忽略：${unknown.join('、')}。如果是商品，检查名字是否和「商品」表一字不差`);
+  const noCol = Object.keys(products).filter(n => !prodCols.some(([, h]) => h === n));
+  if (noCol.length) warns.push(`「订单」表里没有这些商品的列：${noCol.join('、')}`);
+  if (map.pay === undefined) warns.push('「订单」表没有付款方式列，全部当作现场付款');
+
+  const get = (r, k) => map[k] === undefined ? '' : cell(r[map[k]]);
+  const orders = [], seen = {};
+  or.slice(1).forEach((r, i) => {
+    const line = i + 2;
+    const name = get(r, 'name'), twitter = get(r, 'twitter').replace(/^@/, ''), email = get(r, 'email');
+    const who = name || twitter || email;
+    const items = [];
+    prodCols.forEach(([c, n]) => {
+      const v = r[c]; if (v === '' || v == null) return;
+      const q = Number(v);
+      if (!Number.isInteger(q) || q < 0) return warns.push(`第 ${line} 行「${n}」的数量「${v}」不是整数，已忽略`);
+      if (q > 0) items.push([n, q]);
+    });
+    if (!who) { if (items.length) warns.push(`第 ${line} 行有商品，但没有收件人 / twitter / email，已跳过`); return; }
+    if (!items.length) return warns.push(`第 ${line} 行（${who}）没有填任何商品，已跳过`);
+    const payRaw = get(r, 'pay');
+    let pay = '现场付款';
+    if (/提前|预付/.test(payRaw)) pay = '提前转账';
+    else if (!/现场|现金|微信|支付宝/.test(payRaw)) warns.push(`第 ${line} 行（${who}）付款方式「${payRaw || '空'}」看不懂，先当作现场付款`);
+    // 内部编号：收件人 + twitter + email，完全一样的再加序号；同名的人不会被合并
+    const key = [name, twitter, email].map(norm).join('|');
+    seen[key] = (seen[key] || 0) + 1;
+    orders.push({ id: key + (seen[key] > 1 ? '#' + seen[key] : ''), line, name, twitter, email, pay,
+                  date: get(r, 'date'), note: get(r, 'note'), items });
+  });
+  if (!orders.length) errors.push('「订单」表里没有可以导入的订单');
+
+  const byName = {};
+  orders.forEach(o => { if (o.name) (byName[norm(o.name)] ||= []).push(o); });
+  const dupNames = Object.values(byName).filter(a => a.length > 1).map(a => `${a[0].name} ×${a.length}`);
+  return { errors, warns, products, orders, dupNames };
+}
+
+let sheetIssues = sheetCache?.warns || [];   // 表格里要检查的地方
+let lastLoad = 0;
+async function loadSheet() {
+  if (!SHEET_API || !store.get('hf_code', '')) return;
+  lastLoad = Date.now();
+  try {
+    const j = await GoogleBackend.call({ action: 'data' });
+    const res = parseRows(j.products || [], j.orders || []);
+    sheetIssues = [...res.errors, ...res.warns];
+    if (res.errors.length) { renderSource(); return; }   // 表格有大问题：先继续用手机里存的那份
+    const changed = JSON.stringify([res.products, res.orders]) !== JSON.stringify([PRODUCTS, ORDERS]);
+    sheetCache = { products: res.products, orders: res.orders, warns: sheetIssues, at: Date.now() };
+    store.set('hf_sheet_cache', sheetCache);
+    if (changed) { PRODUCTS = res.products; ORDERS = res.orders; rebuild(); refreshViews(); cacheImages(); }
+    renderSource();
+  } catch (err) {
+    if (err.badCode) showLogin('访问码已经改了，请输入新的访问码');
+  }
+}
+
+function renderSource() {
+  if (!SHEET_API) { $('#source').innerHTML = '数据：<b>示例数据</b>（还没连接 Google 表格）'; return; }
+  $('#source').innerHTML = `数据：<b>Google 表格</b> · ${sheetCache ? '订单更新于 ' + ago(sheetCache.at) : '还没读取'}` +
+    (sheetIssues.length ? ` · <button class="link warnlink" id="issues">⚠ 表格有 ${sheetIssues.length} 处要检查</button>` : '');
+}
+function showIssues() {
+  openId = null;
+  $('#sheet').innerHTML = `
+    <div class="grab"></div>
+    <div class="sheet-scroll">
+      <div class="s-head"><div><h2>表格要检查的地方</h2><div class="sub">改好表格后，app 一分钟内会自动读到</div></div>
+        <button class="x" id="close" aria-label="关闭">✕</button></div>
+      <div class="alert"><ul>${sheetIssues.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>
+    </div>
+    <div class="s-foot"><button class="btn ghost" id="close2">关闭</button></div>`;
+  $('#mask').hidden = false;
+}
+$('#source').addEventListener('click', e => { if (e.target.closest('#issues')) showIssues(); });
+
+// ---------- 登录 ----------
+function showLogin(msg = '') {
+  $('#login').hidden = false;
+  $('#lerr').textContent = msg;
+  if (!$('#lname').value) $('#lname').value = store.get('hf_who', '');
+}
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const code = $('#lcode').value.trim(), name = $('#lname').value.trim();
+  $('#lerr').textContent = '正在连接…';
+  store.set('hf_code', code);
+  try {
+    await GoogleBackend.call({ action: 'data' });
+  } catch (err) {
+    store.set('hf_code', '');
+    $('#lerr').textContent = err.badCode ? '访问码不对，请再确认一下' : '连不上网络。第一次登录需要联网，之后没信号也能用';
+    return;
+  }
+  $('#who').value = name; store.set('hf_who', name);
+  $('#login').hidden = true; $('#lcode').value = '';
+  await loadSheet();
+  sync.run();
+});
+$('#logout').addEventListener('click', () => {
+  const n = sync.pending();
+  if (!confirm(n ? `还有 ${n} 条记录没上传，退出后要重新登录才能继续上传。确定退出吗？` : '确定退出登录吗？')) return;
+  store.set('hf_code', '');
+  showLogin();
+});
+
+// ---------- 事件 ----------
+$('#q').addEventListener('input', renderList);
+$('#q').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const all = document.querySelectorAll('#list .order');
+  if (all.length === 1) openOrder(all[0].dataset.id);
+});
+$('#seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  filter = b.dataset.f; renderList();
+});
+$('#list').addEventListener('click', e => {
+  const b = e.target.closest('.order'); if (b) openOrder(b.dataset.id);
+});
+$('#mask').addEventListener('click', e => { if (e.target.id === 'mask') tryClose(); });
+let memoTimer = null;
+function saveMemo(el) {
+  clearTimeout(memoTimer);
+  const oid = openId, v = el.value.trim();
+  if (oid && v !== (data.memos[oid] || '')) { emit(oid, 'memo', { text: v }); commit(); }
+}
+$('#sheet').addEventListener('input', e => {
+  if (e.target.id !== 'memo') return;
+  clearTimeout(memoTimer);
+  memoTimer = setTimeout(() => saveMemo(e.target), 800);
+});
+$('#sheet').addEventListener('focusout', e => { if (e.target.id === 'memo') saveMemo(e.target); });
+$('#sheet').addEventListener('click', e => {
+  const o = ORDERS.find(x => x.id === openId);
+  if (e.target.closest('#close, #close2')) return openId ? tryClose() : closeOrder();
+  if (e.target.closest('#finish')) return finish(o);
+  const z = e.target.closest('.zoom');
+  if (z) {  // 放大看图，不改变取货状态
+    const pz = PRODUCTS[z.dataset.zoom];
+    $('#viewer').innerHTML = `<div>${pz?.img ? `<img class="full" src="${esc(pz.img)}" alt="">` : `<div class="big">${ph(z.dataset.zoom)}</div>`}
+      <p>${esc(z.dataset.zoom)}${pz?.spec ? `<br><small>${esc(pz.spec)}</small>` : ''}</p></div>`;
+    $('#viewer').hidden = false;
+    return;
+  }
+  if (e.target.closest('#payall')) { payAllFor = o.id; return renderSheet(); }
+  if (e.target.closest('#payonly')) { payAllFor = null; return renderSheet(); }
+  const mi = e.target.closest('[data-mi]');
+  if (mi) {
+    const meth = METHODS[mi.dataset.mi], c = toCollect(o, sum(o));
+    const amount = meth.cur === 'KRW' ? c.krw : c.cny;
+    const money = meth.cur === 'KRW' ? won(amount) : yuan(amount);
+    act(`已记录：收到${meth.key} ${money}`, () =>
+      emit(o.id, 'pay', { method: meth.key, cur: meth.cur, amount, krw: c.krw, cny: c.cny }));
+    payAllFor = null;
+    return renderSheet();
+  }
+  if (e.target.closest('#unpay')) {
+    const last = data.payments[o.id].at(-1);
+    const was = `${last.method} ${last.cur === 'KRW' ? won(last.amount) : yuan(last.amount)}`;
+    act(`已删掉付款记录：${was}`, () => emit(o.id, 'void', { ref: last.eid }));
+    return renderSheet();
+  }
+  if (e.target.closest('#fixpick')) {
+    act('已按订单数量修正', () => o.items.forEach(([n, c]) => {
+      const r = data.raw[o.id]?.[n] || 0;
+      if (r > c) emit(o.id, 'pick', { n, d: c - r });
+    }));
+    return renderSheet();
+  }
+  if (e.target.closest('#all')) {
+    act('已全部交给客人', () => o.items.forEach(([n, c]) => setTaken(o, n, c)));
+    return renderSheet();
+  }
+  const card = e.target.closest('.pcard'); if (!card) return;
+  const [n, c] = o.items[card.dataset.i];
+  const step = e.target.closest('[data-step]');
+  if (step) {
+    const k = taken(o, n) + Number(step.dataset.step);
+    act(`${n}：已取 ${Math.max(0, Math.min(c, k))} / ${c}`, () => setTaken(o, n, k));
+  }
+  else if (taken(o, n) < c) act(`${n} 已取`, () => setTaken(o, n, c));
+  else act(`${n} 改回未取`, () => setTaken(o, n, 0));
+  renderSheet();
+});
+$('#viewer').addEventListener('click', () => { $('#viewer').hidden = true; });
+$('#who').value = store.get('hf_who', '');
+$('#who').addEventListener('input', e => store.set('hf_who', e.target.value.trim()));
+$('#reset').addEventListener('click', () => {
+  if (!confirm('会删掉所有取货记录，恢复成示例数据，确定吗？')) return;
+  book = newBook(demoEvents()); MockBackend.reset(book.events);
+  saveBook(); rebuild(); renderSource(); renderList(); renderSync();
+});
+
+// ---------- 离线 ----------
+// 商品图片单独存一份，断网也能看图
+function cacheImages() {
+  if (!('caches' in window)) return;
+  const urls = Object.values(PRODUCTS).map(p => p.img).filter(Boolean);
+  caches.open('hf-images').then(c => Promise.all(urls.map(u => c.match(u).then(hit => hit || c.add(u)).catch(() => {})))).catch(() => {});
+}
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  const ready = () => { offlineReady = !!navigator.serviceWorker.controller; renderSync(); };
+  navigator.serviceWorker.addEventListener('controllerchange', ready);
+  navigator.serviceWorker.ready.then(ready);
+}
+$('#sync').addEventListener('click', () => {
+  sync.run();
+  showToast(!window.isSecureContext ? '现在的网址不是 https，上线后才能离线打开页面'
+    : offlineReady ? '页面已存进手机，没信号也能打开' : '正在把页面存进手机，稍等再看');
+});
+// 测试用：模拟断网
+function renderMock() {
+  $('#mock').textContent = `模拟断网（测试用）：${MockBackend.offline ? '开 · 现在当作没网' : '关'}`;
+}
+$('#mock').addEventListener('click', () => {
+  MockBackend.offline = !MockBackend.offline;
+  try { localStorage.setItem('hf_mock_offline', MockBackend.offline ? '1' : '0'); } catch (e) {}
+  renderMock(); sync.run();
+});
+window.addEventListener('online', () => sync.run());
+window.addEventListener('offline', () => { sync.offlineSince ||= Date.now(); renderSync(); });
+setInterval(() => sync.run(), 10000);
+setInterval(() => { renderSync(); renderSource(); }, 30000);
+
+$('#demoTools').hidden = !!SHEET_API;   // 示例模式才有测试按钮
+$('#logout').hidden = !SHEET_API;
+rebuild();
+renderSource();
+renderList();
+renderSync();
+renderMock();
+cacheImages();
+if (SHEET_API && !store.get('hf_code', '')) showLogin();
+else { loadSheet(); sync.run(); }
+// 截图预览用：index.html#r4 直接打开该订单
+if (location.hash.length > 1) openOrder(decodeURIComponent(location.hash.slice(1)));
+</script>
+</body>
+</html>
