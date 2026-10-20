@@ -1035,6 +1035,8 @@ const ORDER_COLS = {   // 按表头文字认列，顺序可以随便换
 };
 const IGNORE_COL = /合计|total|序号|编号|预览|库存|转账信息|来源/i;   // 只是给人看的列
 const cell = v => String(v ?? '').trim();
+// 价格可能是数字，也可能是复制粘贴后变成的文字「₩18,000」「¥105」
+const num = v => typeof v === 'number' ? v : Number(String(v ?? '').replace(/[^\d.]/g, '')) || 0;
 
 // pr / or：「商品」「订单」两张表的内容（二维数组，第一行是表头）
 function parseRows(pr, or) {
@@ -1055,7 +1057,7 @@ function parseRows(pr, or) {
   pr.slice(1).forEach(r => {
     const n = cell(r[iName]); if (!n) return;
     if (products[n]) return warns.push(`商品「${n}」写了两次，只用第一行`);
-    const krw = Number(r[iKrw]) || 0, cny = Number(r[iCny]) || 0;
+    const krw = num(r[iKrw]), cny = num(r[iCny]);
     if (!krw || !cny) warns.push(`商品「${n}」的价格没填全`);
     const [c1, c2] = PALETTE[Object.keys(products).length % PALETTE.length];
     const img = iImg >= 0 ? cell(r[iImg]) : '';
