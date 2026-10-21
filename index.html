@@ -108,6 +108,11 @@
   .mini.half .n { background: #e89a00; }
   .order.done { box-shadow: 0 0 0 1px var(--line); }
   .order.done .oid, .order.done .oname { opacity: .5; }
+  .dhead {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin: 20px 4px 2px; font-size: 15px; font-weight: 800;
+  }
+  .dhead span { font-size: 13px; font-weight: 600; color: var(--muted); }
   .empty { text-align: center; color: var(--muted); padding: 56px 0; }
   .foot { text-align: center; margin-top: 28px; }
   .link { background: none; border: 0; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
@@ -760,7 +765,13 @@ function renderList() {
   $('#seg').innerHTML = [['all', '全部'], ['none', '待取'], ['part', '一部分'], ['done', '已取完']]
     .map(([k, t]) => `<button class="${filter === k ? 'on' : ''}" data-f="${k}">${t}<b>${count[k]}</b></button>`).join('');
 
-  const shown = hit.filter(o => filter === 'all' || status(o) === filter);
+  // 按现场日期排序（10/30 → 10/31 → 11/01 …，没写日期的放最后），同一天里保持表格里的顺序
+  const dateKey = o => { const m = String(o.date || '').match(/(\d{1,2})\D+(\d{1,2})/); return m ? Number(m[1]) * 100 + Number(m[2]) : 9999; };
+  const shown = hit.filter(o => filter === 'all' || status(o) === filter)
+    .map((o, i) => [o, i]).sort((a, b) => dateKey(a[0]) - dateKey(b[0]) || a[1] - b[1]).map(([o]) => o);
+  const perDate = {};
+  shown.forEach(o => { perDate[dateKey(o)] = (perDate[dateKey(o)] || 0) + 1; });
+  let lastDate = null;
   const clash = ORDERS.filter(o => conflicts(o).length).length;
   // 同名提醒：搜索结果里有重名的人，提示核对 twitter / 邮箱
   const names = {};
@@ -771,7 +782,10 @@ function renderList() {
   (shown.length ? shown.map(o => {
     const s = status(o), m = sum(o), memo = data.memos[o.id];
     const left = leftItems(o);
-    return `<button class="order ${s}" data-id="${esc(o.id)}">
+    const dk = dateKey(o), head = dk !== lastDate
+      ? `<div class="dhead">${dk === 9999 ? '没写日期' : '现场 ' + esc(o.date)}<span>${perDate[dk]} 单</span></div>` : '';
+    lastDate = dk;
+    return head + `<button class="order ${s}" data-id="${esc(o.id)}">
       <div class="order-head">
         <span class="oid">${esc(o.name)}</span>
         <span class="oname">${o.twitter ? '@' + esc(o.twitter) : ''}</span>
