@@ -1102,7 +1102,7 @@ function renderStats() {
   const names = Object.keys(per)
     .map((n, i) => [n, i])
     .filter(([n]) => statsIdol === 'all' || idolOfName(n) === statsIdol)
-    .sort((a, b) => idolKey(idolOfName(a[0])) - idolKey(idolOfName(b[0])) || a[1] - b[1])
+    .sort((a, b) => idolKey(idolOfName(a[0])) - idolKey(idolOfName(b[0])) || per[b[0]].qty - per[a[0]].qty || a[1] - b[1])   // 同一偶像里订得多的在前
     .map(([n]) => n);
   const T = names.reduce((a, n) => ({ qty: a.qty + per[n].qty, got: a.got + per[n].got }), { qty: 0, got: 0 });
   const keepScroll = $('.sheet-scroll')?.scrollTop || 0;
