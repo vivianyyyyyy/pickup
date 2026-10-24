@@ -785,6 +785,14 @@ function conflicts(o) {
 }
 
 // ---------- 列表 ----------
+// 收件人排序：英文 A–Z（不分大小写）→ 韩文 가나다 → 中文按拼音 → 其他；同名的保持表格里的顺序
+const COLL = { en: new Intl.Collator('en', { sensitivity: 'base', numeric: true }), ko: new Intl.Collator('ko'), zh: new Intl.Collator('zh-CN') };
+const scriptOf = s => /^[\s\W_]*[a-z0-9]/i.test(s) ? 0 : /^[\s\W_]*[\uac00-\ud7a3\u3131-\u318e]/.test(s) ? 1 : /^[\s\W_]*[\u4e00-\u9fff]/.test(s) ? 2 : 3;
+function nameCmp(a, b) {
+  a = String(a ?? '').trim(); b = String(b ?? '').trim();
+  const sa = scriptOf(a), sb = scriptOf(b);
+  return sa - sb || COLL[['en', 'ko', 'zh', 'en'][sa]].compare(a, b);
+}
 // 现场日期 → 排序用的数字（10/30 → 1030），没写日期 = 9999 放最后
 const dateKeyOf = o => { const m = String(o.date || '').match(/(\d{1,2})\D+(\d{1,2})/); return m ? Number(m[1]) * 100 + Number(m[2]) : 9999; };
 function renderList() {
@@ -809,7 +817,7 @@ function renderList() {
   const idolKey = o => { const i = IDOL_ORDER.indexOf(idolOf(o)); return i < 0 ? IDOL_ORDER.length : i; };
   const shown = hit.filter(o => filter === 'all' || status(o) === filter)
     .map((o, i) => [o, i])
-    .sort((a, b) => dateKey(a[0]) - dateKey(b[0]) || idolKey(a[0]) - idolKey(b[0]) || a[1] - b[1])
+    .sort((a, b) => dateKey(a[0]) - dateKey(b[0]) || idolKey(a[0]) - idolKey(b[0]) || nameCmp(a[0].name, b[0].name) || a[1] - b[1])
     .map(([o]) => o);
   const perDate = {}, perIdol = {};
   shown.forEach(o => {
