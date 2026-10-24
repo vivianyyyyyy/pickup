@@ -438,9 +438,9 @@
   <form class="login-card" id="loginForm" autocomplete="off">
     <img src="icon-192.png" alt="" width="72" height="72">
     <h2>手幅取货</h2>
-    <p>第一次使用，请输入访问码和你的名字</p>
+    <p>请输入访问码和你的名字</p>
     <label>访问码<input id="lcode" inputmode="numeric" required></label>
-    <label>你的名字（记录里会写是谁操作的）<input id="lname" maxlength="6" required></label>
+    <label>你的名字（要和负责人名单里的一样）<input id="lname" maxlength="20" autocapitalize="off" autocorrect="off" spellcheck="false" required></label>
     <div id="lerr" class="lerr"></div>
     <button class="btn" type="submit">进入</button>
   </form>
@@ -513,14 +513,16 @@ const GoogleBackend = {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15000);   // 信号很差时 15 秒没回应就当作没网
     try {
-      const code = store.get('hf_code', '');
+      // 访问码 + 登录的名字（名字要在表格「设置」的名单里）
+      const code = store.get('hf_code', ''), who = store.get('hf_who', '');
       const res = body
         // 用 text/plain 发，Google 的网页应用才不会拦下跨网站请求
         ? await fetch(SHEET_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                                   body: JSON.stringify({ code, ...body }), signal: ctrl.signal })
-        : await fetch(SHEET_API + (SHEET_API.includes('?') ? '&' : '?') + new URLSearchParams({ code, ...params }), { signal: ctrl.signal });
+                                   body: JSON.stringify({ code, who, ...body }), signal: ctrl.signal })
+        : await fetch(SHEET_API + (SHEET_API.includes('?') ? '&' : '?') + new URLSearchParams({ code, who, ...params }), { signal: ctrl.signal });
       const j = await res.json();
       if (j.error === 'code') throw Object.assign(new Error('访问码不对'), { badCode: true });
+      if (j.error === 'name') throw Object.assign(new Error('名字不在名单里'), { badName: true });
       if (j.error) throw new Error(j.error);
       return j;
     } finally {
@@ -699,6 +701,7 @@ const sync = {
       if (SHEET_API && Date.now() - lastLoad > 60000) loadSheet();   // 每分钟看一次订单有没有改
     } catch (err) {
       if (err.badCode) showLogin('访问码已经改了，请输入新的访问码');
+      else if (err.badName) showLogin(NO_NAME_MSG);
       else this.offlineSince ||= Date.now();
     }
     this.busy = false; renderSync();
@@ -1283,6 +1286,7 @@ async function loadSheet() {
     renderSource();
   } catch (err) {
     if (err.badCode) showLogin('访问码已经改了，请输入新的访问码');
+    else if (err.badName) showLogin(NO_NAME_MSG);
   }
 }
 
@@ -1306,6 +1310,8 @@ function showIssues() {
 $('#source').addEventListener('click', e => { if (e.target.closest('#issues')) showIssues(); });
 
 // ---------- 登录 ----------
+// 名字必须在 Google 表格「设置」表的名单里；登录后「核对人」固定成登录的名字
+const NO_NAME_MSG = '这个名字没有权限，请让负责人在表格「设置」的名单里加上你的名字';
 function showLogin(msg = '') {
   $('#login').hidden = false;
   $('#lerr').textContent = msg;
@@ -1315,15 +1321,17 @@ $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   const code = $('#lcode').value.trim(), name = $('#lname').value.trim();
   $('#lerr').textContent = '正在连接…';
-  store.set('hf_code', code);
+  store.set('hf_code', code); store.set('hf_who', name);
+  let me = name;
   try {
-    await GoogleBackend.call({ action: 'data' });
+    me = (await GoogleBackend.call({ action: 'data' })).me || name;   // 用名单里的写法
   } catch (err) {
     store.set('hf_code', '');
-    $('#lerr').textContent = err.badCode ? '访问码不对，请再确认一下' : '连不上网络。第一次登录需要联网，之后没信号也能用';
+    $('#lerr').textContent = err.badCode ? '访问码不对，请再确认一下'
+      : err.badName ? NO_NAME_MSG : '连不上网络。第一次登录需要联网，之后没信号也能用';
     return;
   }
-  $('#who').value = name; store.set('hf_who', name);
+  $('#who').value = me; store.set('hf_who', me);
   $('#login').hidden = true; $('#lcode').value = '';
   await loadSheet();
   sync.run();
@@ -1420,6 +1428,8 @@ $('#sheet').addEventListener('click', e => {
 });
 $('#viewer').addEventListener('click', () => { $('#viewer').hidden = true; });
 $('#who').value = store.get('hf_who', '');
+// 连了表格：核对人就是登录的名字，不能随便改（要换人就退出重新登录）
+if (SHEET_API) { $('#who').readOnly = true; $('#who').title = '要换人请在页面最下面「退出登录」'; }
 $('#who').addEventListener('input', e => store.set('hf_who', e.target.value.trim()));
 $('#reset').addEventListener('click', () => {
   if (!confirm('会删掉所有取货记录，恢复成示例数据，确定吗？')) return;
