@@ -175,6 +175,9 @@
   .paycard { margin-top: 14px; border-radius: 16px; padding: 14px; background: var(--soft); }
 
   /* ---------- 商品统计 ---------- */
+  .seg.dates { overflow-x: auto; scrollbar-width: none; }
+  .seg.dates::-webkit-scrollbar { display: none; }
+  .seg.dates button { flex: 1 0 auto; padding: 7px 12px; }
   .boxes.three { grid-template-columns: repeat(3, 1fr); }
   .box.okbox .v { color: var(--ok); }
   .box.leftbox .v { color: var(--warn); }
@@ -645,7 +648,7 @@ function commit() { saveBook(); rebuild(); sync.kick(); }
 
 let filter = 'all';
 let openId = null;
-let statsOpen = false, statsIdol = 'all';   // 商品统计
+let statsOpen = false, statsIdol = 'all', statsDate = 'all';   // 商品统计
 
 // ---------- 同步 ----------
 // 有改动马上试着上传；另外每 10 秒、网络恢复时各同步一次。失败了记录还在手机里，下次再传。
@@ -780,6 +783,8 @@ function conflicts(o) {
 }
 
 // ---------- 列表 ----------
+// 现场日期 → 排序用的数字（10/30 → 1030），没写日期 = 9999 放最后
+const dateKeyOf = o => { const m = String(o.date || '').match(/(\d{1,2})\D+(\d{1,2})/); return m ? Number(m[1]) * 100 + Number(m[2]) : 9999; };
 function renderList() {
   const st = ORDERS.map(status);
   const done = st.filter(s => s === 'done').length, part = st.filter(s => s === 'part').length;
@@ -796,7 +801,7 @@ function renderList() {
     .map(([k, t]) => `<button class="${filter === k ? 'on' : ''}" data-f="${k}">${t}<b>${count[k]}</b></button>`).join('');
 
   // 按现场日期排序（10/30 → 10/31 → 11/01 …，没写日期的放最后），同一天里保持表格里的顺序
-  const dateKey = o => { const m = String(o.date || '').match(/(\d{1,2})\D+(\d{1,2})/); return m ? Number(m[1]) * 100 + Number(m[2]) : 9999; };
+  const dateKey = dateKeyOf;
   // 同一天里先 Joshua（hjs）再 Jeonghan（yjh）：看订单里商品名开头是谁
   const idolOf = o => String(o.items[0]?.[0] || '').split(' · ')[0];
   const idolKey = o => { const i = IDOL_ORDER.indexOf(idolOf(o)); return i < 0 ? IDOL_ORDER.length : i; };
@@ -1080,9 +1085,14 @@ function closeOrder() { $('#toast').hidden = true; undoIds = null; openId = null
 // 每款商品：所有订单里一共订了几件、已经取走几件（和取货页面用同一份记录，实时更新）
 const idolOfName = n => n.includes(' · ') ? n.split(' · ')[0] : '';
 function renderStats() {
+  const dates = {};   // 有哪些现场日期：{ 1030: '10/30' }
+  ORDERS.forEach(o => { const k = dateKeyOf(o); dates[k] ||= k === 9999 ? '没写日期' : o.date; });
+  const dateKeys = Object.keys(dates).map(Number).sort((a, b) => a - b);
+  if (statsDate !== 'all' && !dates[statsDate]) statsDate = 'all';
   const per = {};
-  Object.keys(PRODUCTS).forEach(n => { per[n] = { qty: 0, got: 0 }; });
-  ORDERS.forEach(o => o.items.forEach(([n, c]) => {
+  // 选了日期就只列那天有人订的款
+  if (statsDate === 'all') Object.keys(PRODUCTS).forEach(n => { per[n] = { qty: 0, got: 0 }; });
+  ORDERS.filter(o => statsDate === 'all' || dateKeyOf(o) === statsDate).forEach(o => o.items.forEach(([n, c]) => {
     const s = per[n] ||= { qty: 0, got: 0 };
     s.qty += c; s.got += Math.min(taken(o, n), c);
   }));
@@ -1101,8 +1111,10 @@ function renderStats() {
   $('#sheet').innerHTML = `
     <div class="grab"></div>
     <div class="sheet-scroll">
-      <div class="s-head"><div><h2>商品统计</h2><div class="sub">所有日期的订单 · 实时更新</div></div>
+      <div class="s-head"><div><h2>商品统计</h2><div class="sub">${statsDate === 'all' ? '所有日期' : esc(dates[statsDate] === '没写日期' ? '没写日期' : '现场 ' + dates[statsDate])}的订单 · 实时更新</div></div>
         <button class="x" id="close" aria-label="关闭">✕</button></div>
+      ${dateKeys.length > 1 ? `<div class="seg dates">${[['all', '全部日期'], ...dateKeys.map(k => [k, dates[k]])]
+        .map(([k, t]) => `<button class="${statsDate === k ? 'on' : ''}" data-sd="${k}">${esc(t)}</button>`).join('')}</div>` : ''}
       ${idols.length > 1 ? `<div class="seg">${[['all', '全部'], ...idols.map(i => [i, i || '其他'])]
         .map(([k, t]) => `<button class="${statsIdol === k ? 'on' : ''}" data-si="${esc(k)}">${esc(t)}</button>`).join('')}</div>` : ''}
       <div class="boxes three">
@@ -1329,6 +1341,8 @@ $('#sheet').addEventListener('click', e => {
   if (e.target.closest('#finish')) return finish(o);
   const si = e.target.closest('[data-si]');
   if (si) { statsIdol = si.dataset.si; return renderStats(); }
+  const sd = e.target.closest('[data-sd]');
+  if (sd) { statsDate = sd.dataset.sd === 'all' ? 'all' : Number(sd.dataset.sd); $('.sheet-scroll').scrollTop = 0; return renderStats(); }
   const z = e.target.closest('[data-zoom]');
   if (z) {  // 放大看图，不改变取货状态
     const pz = PRODUCTS[z.dataset.zoom];
