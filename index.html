@@ -180,6 +180,8 @@
   .seg.dates button { flex: 1 0 auto; padding: 7px 12px; }
   .boxes.three { grid-template-columns: repeat(3, 1fr); }
   .box.okbox .v { color: var(--ok); }
+  .box.stotal { margin-top: 10px; }
+  .box.stotal .k.warn { color: var(--warn); margin-top: 4px; }
   .box.leftbox .v { color: var(--warn); }
   .srow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
   .srow .simg { flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: none; cursor: zoom-in; }
@@ -1105,6 +1107,9 @@ function renderStats() {
     .sort((a, b) => idolKey(idolOfName(a[0])) - idolKey(idolOfName(b[0])) || per[b[0]].qty - per[a[0]].qty || a[1] - b[1])   // 同一偶像里订得多的在前
     .map(([n]) => n);
   const T = names.reduce((a, n) => ({ qty: a.qty + per[n].qty, got: a.got + per[n].got }), { qty: 0, got: 0 });
+  const money = n => ({ krw: per[n].qty * (PRODUCTS[n]?.krw || 0), cny: per[n].qty * (PRODUCTS[n]?.cny || 0) });   // 订了几件 × 单价
+  const M = names.reduce((a, n) => { const m = money(n); return { krw: a.krw + m.krw, cny: a.cny + m.cny }; }, { krw: 0, cny: 0 });
+  const noPrice = names.filter(n => per[n].qty && !PRODUCTS[n]?.krw);
   const keepScroll = $('.sheet-scroll')?.scrollTop || 0;
   let lastIdol = null;
 
@@ -1122,6 +1127,8 @@ function renderStats() {
         <div class="box okbox"><div class="k">已取</div><div class="v">${T.got}<small> 件</small></div></div>
         <div class="box leftbox"><div class="k">还剩</div><div class="v">${T.qty - T.got}<small> 件</small></div></div>
       </div>
+      <div class="box stotal"><div class="k">订单总金额</div><div class="v">${won(M.krw)}<small> / ${yuan(M.cny)}</small></div>
+        ${noPrice.length ? `<div class="k warn">${noPrice.length} 款没填价格，没算进去：${esc(noPrice.join('、'))}</div>` : ''}</div>
       ${names.map(n => {
         const s = per[n], left = s.qty - s.got, idol = idolOfName(n);
         const cls = !s.qty ? 'zero' : !left ? 'done' : '';
@@ -1132,7 +1139,7 @@ function renderStats() {
           <button class="simg" data-zoom="${esc(n)}" aria-label="放大">${ph(n)}</button>
           <div class="sinfo">
             <div class="sname">${esc(n)}</div>
-            <div class="snums">订了 <b>${s.qty}</b> · 已取 <b>${s.got}</b></div>
+            <div class="snums">订了 <b>${s.qty}</b> · 已取 <b>${s.got}</b>${s.qty && PRODUCTS[n]?.krw ? ` · ${both(money(n))}` : ''}</div>
             ${s.qty ? `<div class="bar"><i class="b-ok" style="width:${s.got / s.qty * 100}%"></i></div>` : ''}
           </div>
           <div class="sleft">${!s.qty ? '<b>—</b>还没人订' : !left ? '<b>✓</b>取完' : `<b>${left}</b>还剩`}</div>
