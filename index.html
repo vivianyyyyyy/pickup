@@ -41,6 +41,7 @@
   .eyebrow { font-size: 13px; color: var(--muted); }
   .progress-num { font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin-top: 2px; }
   .progress-num small { font-size: 16px; font-weight: 600; color: var(--muted); }
+  .prog-sub { display: block; font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--muted); margin-top: 2px; }
   .bar { height: 6px; border-radius: 3px; background: var(--soft); margin-top: 10px; overflow: hidden; display: flex; }
   .bar i { display: block; height: 100%; transition: width .3s; }
   .bar .b-ok { background: var(--ok); }
@@ -48,7 +49,7 @@
   .who {
     display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px;
     border-radius: 999px; background: var(--card); box-shadow: var(--shadow);
-    font-size: 13px; color: var(--muted);
+    font-size: 13px; color: var(--muted); white-space: nowrap;
   }
   .who input {
     width: 56px; border: 0; outline: none; background: var(--soft); color: var(--ink);
@@ -69,7 +70,7 @@
   .search input:focus { border-color: var(--accent); }
   .seg { display: flex; gap: 4px; margin-top: 12px; padding: 4px; background: var(--soft); border-radius: 12px; }
   .seg button {
-    flex: 1; padding: 7px 0; border: 0; border-radius: 9px; background: none; cursor: pointer;
+    flex: 1; padding: 6px 0; border: 0; border-radius: 9px; background: none; cursor: pointer;
     font-size: 14px; color: var(--muted); white-space: nowrap;
   }
   .seg button b { font-weight: 700; margin-left: 2px; }
@@ -173,6 +174,11 @@
     background: var(--warn-soft); color: var(--warn);
   }
   .paycard { margin-top: 14px; border-radius: 16px; padding: 14px; background: var(--soft); }
+
+  /* ---------- 韩中对照（在韩国卖：韩文在前，中文在后，一样大小） ---------- */
+  .lb { display: block; }
+  .catko { display: block; margin-top: 1px; color: var(--accent); }
+  .seg button .lb { line-height: 1.25; }
 
   /* ---------- 商品统计 ---------- */
   .seg.dates { overflow-x: auto; scrollbar-width: none; }
@@ -394,19 +400,19 @@
   <div class="wrap">
     <div class="top">
       <div>
-        <div class="eyebrow">取货进度（所有日期）</div>
+        <div class="eyebrow">수령 현황 (전체 날짜) 取货进度（所有日期）</div>
         <div class="progress-num" id="prog"></div>
       </div>
       <div class="top-r">
-        <label class="who">核对人<input id="who" maxlength="6" placeholder="A"></label>
-        <button id="stats" class="stats-btn">商品统计 ›</button>
+        <label class="who">담당 核对人<input id="who" maxlength="6" placeholder="A"></label>
+        <button id="stats" class="stats-btn">상품 통계 商品统计 ›</button>
       </div>
     </div>
     <div class="bar"><i id="barOk" class="b-ok"></i><i id="barPart" class="b-part"></i></div>
     <button id="sync" class="sync"></button>
     <div class="search">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="收件人 / twitter id / 邮箱" autocomplete="off">
+      <input id="q" type="search" placeholder="이름 / 트위터 / 이메일 · 收件人 / twitter / 邮箱" autocomplete="off">
     </div>
     <div id="seg" class="seg"></div>
   </div>
@@ -736,6 +742,12 @@ const norm = s => String(s ?? '').toLowerCase().replace(/\s+/g, '');
 const yuan = n => '¥' + n.toLocaleString('zh-CN');
 const won = n => '₩' + n.toLocaleString('ko-KR');
 const payType = o => o.pay === '现场付款' ? '现场付款' : '提前转账';
+// 韩中对照：客人会看屏幕一起核对，所以韩文在前、中文在后
+const bi = (k, z) => `${k} ${z}`;                          // 同一行
+const bil = (k, z) => `${k}<span class="lb">${z}</span>`;  // 中文换到下一行
+const CAT_KO = { 大手幅: '슬로건', 小手幅: '미니 슬로건', 大扇子: '우치와', 小扇子: '미니 우치와' };
+const catKo = n => { const m = String(n).match(/(大手幅|小手幅|大扇子|小扇子)$/); return m ? `<span class="catko">${CAT_KO[m[1]]}</span>` : ''; };
+const METHOD_KO = { 微信: '위챗페이', 支付宝: '알리페이', 银行转账: '계좌이체', 现金: '현금' };
 
 const taken = (o, n) => data.picks[o.id]?.[n] || 0;
 // 按件数算一组商品的韩币/人民币金额
@@ -767,7 +779,7 @@ function status(o) {
   return s.got === 0 ? 'none' : s.left === 0 ? 'done' : 'part';
 }
 const leftItems = o => o.items.map(([n, c]) => [n, c - taken(o, n)]).filter(([, k]) => k > 0);
-const LABEL = { none: '待取', part: '取了一部分', done: '已取完' };
+const LABEL = { none: bi('미수령', '待取'), part: bi('부분 수령', '取了一部分'), done: bi('수령 완료', '已取完') };
 const IDOL_ORDER = ['Joshua', 'Jeonghan'];   // 同一天里的排列顺序：hjs 在前，yjh 在后
 
 // 多台手机断网时各自操作，合起来后可能重复发货 / 重复收款
@@ -798,7 +810,7 @@ const dateKeyOf = o => { const m = String(o.date || '').match(/(\d{1,2})\D+(\d{1
 function renderList() {
   const st = ORDERS.map(status);
   const done = st.filter(s => s === 'done').length, part = st.filter(s => s === 'part').length;
-  $('#prog').innerHTML = `${done}<small> / ${ORDERS.length} 单已取完${part ? ` · ${part} 单取了一部分` : ''}</small>`;
+  $('#prog').innerHTML = `${done}<small> / ${ORDERS.length}</small><span class="prog-sub">${bi('수령 완료', '已取完')}${part ? ` · ${bi('부분 수령', '取了一部分')} ${part}` : ''}</span>`;
   $('#barOk').style.width = done / (ORDERS.length || 1) * 100 + '%';
   $('#barPart').style.width = part / (ORDERS.length || 1) * 100 + '%';
 
@@ -807,8 +819,8 @@ function renderList() {
   const count = { all: hit.length, none: 0, part: 0, done: 0 };
   hit.forEach(o => count[status(o)]++);
 
-  $('#seg').innerHTML = [['all', '全部'], ['none', '待取'], ['part', '一部分'], ['done', '已取完']]
-    .map(([k, t]) => `<button class="${filter === k ? 'on' : ''}" data-f="${k}">${t}<b>${count[k]}</b></button>`).join('');
+  $('#seg').innerHTML = [['all', '전체', '全部'], ['none', '미수령', '待取'], ['part', '부분', '一部分'], ['done', '완료', '已取完']]
+    .map(([k, ko, zh]) => `<button class="${filter === k ? 'on' : ''}" data-f="${k}">${ko}<b>${count[k]}</b><span class="lb">${zh}</span></button>`).join('');
 
   // 按现场日期排序（10/30 → 10/31 → 11/01 …，没写日期的放最后），同一天里保持表格里的顺序
   const dateKey = dateKeyOf;
@@ -837,8 +849,8 @@ function renderList() {
     const left = leftItems(o);
     const dk = dateKey(o), idol = idolOf(o);
     let head = '';
-    if (dk !== lastDate) { head += `<div class="dhead">${dk === 9999 ? '没写日期' : '现场 ' + esc(o.date)}<span>${perDate[dk]} 单</span></div>`; lastIdol = null; }
-    if (idol !== lastIdol && idol) head += `<div class="ihead">${esc(idol)} · ${perIdol[dk + idol]} 单</div>`;
+    if (dk !== lastDate) { head += `<div class="dhead">${dk === 9999 ? bi('날짜 없음', '没写日期') : bi('현장', '现场') + ' ' + esc(o.date)}<span>${bi(`${perDate[dk]}건`, `${perDate[dk]} 单`)}</span></div>`; lastIdol = null; }
+    if (idol !== lastIdol && idol) head += `<div class="ihead">${esc(idol)} · ${bi(`${perIdol[dk + idol]}건`, `${perIdol[dk + idol]} 单`)}</div>`;
     lastDate = dk; lastIdol = idol;
     return head + `<button class="order ${s}" data-id="${esc(o.id)}">
       <div class="order-head">
@@ -848,9 +860,9 @@ function renderList() {
         <span class="tag t-${s}">${LABEL[s]}</span>
       </div>
       <div class="lines">
-        <span class="who-line">${esc(o.email)}${o.date ? ` · <span class="date">现场 ${esc(o.date)}</span>` : ''}</span>
-        <span class="money">共 ${m.qty} 件 · ${payTag(m)}</span>
-        ${s === 'part' ? `<span class="left">还差 ${m.left} 件：${left.map(([n, k]) => `${esc(n)} ×${k}`).join('、')}</span>` : ''}
+        <span class="who-line">${esc(o.email)}${o.date ? ` · <span class="date">${bi('현장', '现场')} ${esc(o.date)}</span>` : ''}</span>
+        <span class="money">${bi(`총 ${m.qty}개`, `共 ${m.qty} 件`)} · ${payTag(m)}</span>
+        ${s === 'part' ? `<span class="left">${bi(`${m.left}개 남음`, `还差 ${m.left} 件`)}：${left.map(([n, k]) => `${esc(n)} ×${k}`).join('、')}</span>` : ''}
         ${o.note ? `<span class="nt">⚑ ${esc(o.note)}</span>` : ''}
         ${memo ? `<span class="nt">✎ ${esc(memo)}</span>` : ''}
       </div>
@@ -859,7 +871,7 @@ function renderList() {
         return `<span class="mini ${cls}">${ph(n)}<span class="n">${k >= c ? '✓' : k > 0 ? `${k}/${c}` : c}</span></span>`;
       }).join('')}</div>
     </button>`;
-  }).join('') : `<div class="empty">${ORDERS.length ? '没有找到匹配的订单' : '还没有订单数据，联网后会自动从 Google 表格读取'}</div>`);
+  }).join('') : `<div class="empty">${ORDERS.length ? bi('검색 결과 없음', '没有找到匹配的订单') : '还没有订单数据，联网后会自动从 Google 表格读取'}</div>`);
 }
 
 function ph(name) {
@@ -871,10 +883,10 @@ function ph(name) {
 const both = x => `${won(x.krw)} / ${yuan(x.cny)}`;
 // 付款标记：提前转账只标"已转账"；现场付款才显示金额
 function payTag(m) {
-  if (m.type === '提前转账') return `<span class="pt pt-ok">✓ 已提前转账</span>`;
-  if (m.paidAll) return `<span class="pt pt-ok">✓ 现场已付清</span>`;
-  if (m.unpaid) return `<span class="pt pt-due">现场付款 · 待收 ${both(m.due)}</span>`;
-  return `<span class="pt pt-due">现场付款 ${both({ krw: m.krw - m.P.krw, cny: m.cny - m.P.cny })}</span>`;
+  if (m.type === '提前转账') return `<span class="pt pt-ok">✓ ${bi('입금 완료', '已提前转账')}</span>`;
+  if (m.paidAll) return `<span class="pt pt-ok">✓ ${bi('결제 완료', '现场已付清')}</span>`;
+  if (m.unpaid) return `<span class="pt pt-due">${bi('현장 결제 · 미결제', '现场付款 · 待收')} ${both(m.due)}</span>`;
+  return `<span class="pt pt-due">${bi('현장 결제', '现场付款')} ${both({ krw: m.krw - m.P.krw, cny: m.cny - m.P.cny })}</span>`;
 }
 
 // ---------- 付款框 ----------
@@ -884,38 +896,38 @@ const toCollect = (o, m) => payAllFor === o.id ? { krw: m.T.krw - m.P.krw, cny: 
 function payCard(o, m) {
   const row = (k, v, cls = '') => `<div class="prow ${cls}"><span>${k}</span><b>${v}</b></div>`;
   if (m.type === '提前转账') {
-    return `<div class="paycard ok slim"><div class="pay-status">✓ 已提前转账，不用收钱</div></div>`;
+    return `<div class="paycard ok slim"><div class="pay-status">✓ ${bil('입금 완료 · 추가 결제 없음', '已提前转账，不用收钱')}</div></div>`;
   }
-  const top = `<div class="pay-top"><span class="k need">需要现场付款</span></div>
+  const top = `<div class="pay-top"><span class="k need">${bi('현장 결제', '需要现场付款')}</span></div>
     <div class="amt"><span class="krw">${won(m.krw)}</span><span class="cny">${yuan(m.cny)}</span></div>`;
 
   const c = toCollect(o, m);
   let body, cls;
   if (c.krw > 0) {
     cls = 'unpaid';
-    const btn = i => `<button data-mi="${i}">${METHODS[i].key}</button>`;
+    const btn = i => `<button data-mi="${i}">${bil(METHOD_KO[METHODS[i].key], METHODS[i].key)}</button>`;
     body = `<div class="collect">
-      <div class="due-big">${payAllFor === o.id ? '一次付清全部' : `本次应收（已取的 ${m.got} 件）`} · 客人用什么付就点哪个</div>
-      <div class="mgroup"><div class="mlabel">收人民币 <b>${yuan(c.cny)}</b></div><div class="methods">${btn(0)}${btn(1)}</div></div>
-      <div class="mgroup"><div class="mlabel">收韩币 <b>${won(c.krw)}</b></div><div class="methods">${btn(2)}${btn(3)}</div></div>
+      <div class="due-big">${payAllFor === o.id ? bi('전액 결제', '一次付清全部') : bi(`이번 결제 금액 (수령 ${m.got}개)`, `本次应收（已取的 ${m.got} 件）`)} · 客人用什么付就点哪个</div>
+      <div class="mgroup"><div class="mlabel">${bi('위안', '收人民币')} <b>${yuan(c.cny)}</b></div><div class="methods">${btn(0)}${btn(1)}</div></div>
+      <div class="mgroup"><div class="mlabel">${bi('원화', '收韩币')} <b>${won(c.krw)}</b></div><div class="methods">${btn(2)}${btn(3)}</div></div>
       ${payAllFor === o.id ? `<button class="link" id="payonly" style="margin-top:8px">改回只收已取部分</button>` : ''}
     </div>`;
   } else if (m.paidAll) {
-    cls = 'ok'; body = `<div class="pay-status">✓ 全部付清</div>`;
+    cls = 'ok'; body = `<div class="pay-status">✓ ${bi('결제 완료', '全部付清')}</div>`;
   } else if (m.got === 0) {
     cls = ''; body = `<div class="pay-status muted">先勾选这次要取的商品，这里会算出应收金额</div>
       <button class="link" id="payall">客人想一次付清全部</button>`;
   } else {
-    cls = 'ok'; body = `<div class="pay-status">✓ 已取的部分已付清</div>`;
+    cls = 'ok'; body = `<div class="pay-status">✓ ${bi('수령분 결제 완료', '已取的部分已付清')}</div>`;
   }
 
   return `<div class="paycard ${cls}">${top}
     <div class="prows">
-      ${row(`已取 ${m.got} / ${m.qty} 件`, both(m.G))}
-      ${m.pays.length ? row('已收', both(m.P)) : ''}
-      ${m.left ? row(`未取 ${m.left} 件`, `${both(m.rest)} · ${m.paidAll ? '已付' : '下次取货时付'}`, m.paidAll ? 'warn' : '') : ''}
+      ${row(bi(`수령 ${m.got} / ${m.qty}개`, `已取 ${m.got} / ${m.qty} 件`), both(m.G))}
+      ${m.pays.length ? row(bi('결제됨', '已收'), both(m.P)) : ''}
+      ${m.left ? row(bi(`미수령 ${m.left}개`, `未取 ${m.left} 件`), `${both(m.rest)} · ${m.paidAll ? bi('결제됨', '已付') : bi('다음 수령 시 결제', '下次取货时付')}`, m.paidAll ? 'warn' : '') : ''}
     </div>
-    ${m.pays.length ? `<div class="plist">${m.pays.map((p, i) => `<div>✓ ${esc(p.method)} ${p.cur === 'KRW' ? won(p.amount) : yuan(p.amount)} · ${esc(p.by)} ${time(p.at)}${
+    ${m.pays.length ? `<div class="plist">${m.pays.map((p, i) => `<div>✓ ${METHOD_KO[p.method] ? METHOD_KO[p.method] + ' ' : ''}${esc(p.method)} ${p.cur === 'KRW' ? won(p.amount) : yuan(p.amount)} · ${esc(p.by)} ${time(p.at)}${
       i === m.pays.length - 1 ? `<button class="link" id="unpay">撤销</button>` : ''}</div>`).join('')}</div>` : ''}
     ${body}
   </div>`;
@@ -980,7 +992,7 @@ function renderSheet() {
         <div>
           <h2>${esc(o.name)}</h2>
           <div class="sub">${o.twitter ? '@' + esc(o.twitter) + ' · ' : ''}${esc(o.email)}</div>
-          ${o.date ? `<div class="sub">现场日期 ${esc(o.date)}</div>` : ''}
+          ${o.date ? `<div class="sub">${bi('수령일', '现场日期')} ${esc(o.date)}</div>` : ''}
         </div>
         <button class="x" id="close" aria-label="关闭">✕</button>
       </div>
@@ -996,16 +1008,16 @@ function renderSheet() {
 
       <div class="boxes one" style="margin-top:10px">
         ${s === 'done'
-          ? `<div class="box alldone"><div class="k">取货情况</div><div class="v">已取完</div><div class="k">共 ${m.qty} 件</div></div>`
+          ? `<div class="box alldone"><div class="k">${bi('수령 현황', '取货情况')}</div><div class="v">${bi('수령 완료', '已取完')}</div><div class="k">${bi(`총 ${m.qty}개`, `共 ${m.qty} 件`)}</div></div>`
           : s === 'part'
-          ? `<div class="box left"><div class="k">取货情况</div><div class="v">还差 ${m.left} 件</div><div class="k">已取 ${m.got} / ${m.qty} 件</div></div>`
-          : `<div class="box"><div class="k">取货情况</div><div class="v">${m.qty} 件<small> 未取</small></div><div class="k">&nbsp;</div></div>`}
+          ? `<div class="box left"><div class="k">${bi('수령 현황', '取货情况')}</div><div class="v">${bi(`${m.left}개 남음`, `还差 ${m.left} 件`)}</div><div class="k">${bi(`수령 ${m.got} / ${m.qty}개`, `已取 ${m.got} / ${m.qty} 件`)}</div></div>`
+          : `<div class="box"><div class="k">${bi('수령 현황', '取货情况')}</div><div class="v">${bi(`${m.qty}개 미수령`, `${m.qty} 件未取`)}</div><div class="k">&nbsp;</div></div>`}
       </div>
 
-      ${s === 'part' ? `<div class="alert"><b>还没取：</b>${left.map(([n, k]) => `${esc(n)} ×${k}`).join('、')}</div>` : ''}
+      ${s === 'part' ? `<div class="alert"><b>${bi('미수령', '还没取')}：</b>${left.map(([n, k]) => `${esc(n)} ×${k}`).join('、')}</div>` : ''}
       ${o.note ? `<div class="alert note"><b>订单备注：</b>${esc(o.note)}</div>` : ''}
 
-      <div class="s-label"><span>要拿的东西 · 共 ${m.qty} 件</span><span>点卡片 = 取走 / 改回未取</span></div>
+      <div class="s-label"><span>${bi(`수령할 상품 · 총 ${m.qty}개`, `要拿的东西 · 共 ${m.qty} 件`)}</span><span>点卡片 = 取走 / 改回未取</span></div>
       <div class="grid">
         ${o.items.map(([n, c], i) => {
           const k = taken(o, n), p = PRODUCTS[n] || {};
@@ -1013,18 +1025,18 @@ function renderSheet() {
           const last = (data.logs[o.id] || []).filter(l => l.n === n && l.d > 0 && !l.voided).pop();
           return `<div class="pcard ${cls}" data-i="${i}" role="button" tabindex="0">
             <div class="pimg">${ph(n)}</div>
-            ${k >= c ? `<span class="stamp">已取</span>` : k > 0 ? `<span class="stamp half">取了<br>${k}/${c}</span>` : ''}
+            ${k >= c ? `<span class="stamp">수령<br>已取</span>` : k > 0 ? `<span class="stamp half">수령 ${k}/${c}<br>已取</span>` : ''}
             <button class="zoom" data-zoom="${esc(n)}" aria-label="放大">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
             </button>
-            <div class="pinfo"><b>${esc(n)}</b><span class="q">×${c}</span></div>
+            <div class="pinfo"><b>${esc(n)}${catKo(n)}</b><span class="q">×${c}</span></div>
             ${p.spec ? `<div class="spec">${esc(p.spec)}</div>` : ''}
             ${p.krw ? `<div class="price">${won(p.krw)} / ${yuan(p.cny)}${c > 1 ? ` × ${c} = <b>${won(p.krw * c)} / ${yuan(p.cny * c)}</b>` : ''}</div>` : ''}
-            <div class="pstate">${k >= c ? `✓ 已取完${last ? ` · ${esc(last.by)} ${time(last.at)}` : ''}`
-              : k > 0 ? `已取 ${k} 件，还差 ${c - k} 件` : '未取'}</div>
+            <div class="pstate">${k >= c ? `✓ ${bi('수령 완료', '已取完')}${last ? ` · ${esc(last.by)} ${time(last.at)}` : ''}`
+              : k > 0 ? bil(`${k}개 수령 · ${c - k}개 남음`, `已取 ${k} 件，还差 ${c - k} 件`) : bi('미수령', '未取')}</div>
             ${c > 1 ? `<div class="stepper">
               <button data-step="-1" ${k <= 0 ? 'disabled' : ''} aria-label="少取一件">−</button>
-              <span>已取 <b>${k}</b> / ${c}</span>
+              <span>${bi('수령', '已取')} <b>${k}</b> / ${c}</span>
               <button data-step="1" ${k >= c ? 'disabled' : ''} aria-label="多取一件">+</button>
             </div>` : ''}
           </div>`;
